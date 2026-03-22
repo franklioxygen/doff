@@ -55,7 +55,7 @@ const defaultTextOptions: TextDiffOptions = {
   disableWrap: false,
   viewMode: 'split',
   precision: 'word',
-  language: 'typescript',
+  language: 'plaintext',
   ignoreLeadingTrailingWhitespace: false,
   ignoreAllWhitespace: false,
   ignoreCase: false,

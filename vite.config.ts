@@ -3,10 +3,6 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  // Monaco Editor workers must NOT be pre-bundled - serve from node_modules as-is
-  optimizeDeps: {
-    exclude: ['monaco-editor'],
-  },
   plugins: [
     react(),
     VitePWA({

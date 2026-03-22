@@ -1,9 +1,28 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { JSX } from 'react'
-import Editor, { useMonaco } from '@monaco-editor/react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import Editor, { loader, useMonaco } from '@monaco-editor/react'
+import type { OnMount } from '@monaco-editor/react'
+import * as monaco from 'monaco-editor'
+import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
+import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
+import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
+import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 import { computeDiff } from './textDiff'
 import { exportDiffHtml, loadDoffBundle, saveDoffBundle } from './exporters'
 import { useSessionStore } from '../../store/sessionStore'
+
+// Use local monaco-editor instead of CDN — eliminates loader.js.map 404 and unhandled rejections
+window.MonacoEnvironment = {
+  getWorker(_: string, label: string) {
+    if (label === 'json') return new jsonWorker()
+    if (label === 'css' || label === 'scss' || label === 'less') return new cssWorker()
+    if (label === 'html' || label === 'handlebars' || label === 'razor') return new htmlWorker()
+    if (label === 'typescript' || label === 'javascript') return new tsWorker()
+    return new editorWorker()
+  },
+}
+
+loader.config({ monaco })
 
 type Side = 'left' | 'right'
 
@@ -34,8 +53,51 @@ const readFileText = async (file: File): Promise<string> => {
   return text.replace(/\r\n?/g, '\n')
 }
 
+const EXT_TO_LANG: Record<string, string> = {
+  ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx', mjs: 'javascript', cjs: 'javascript',
+  json: 'json', css: 'css', scss: 'css', less: 'css',
+  html: 'html', htm: 'html', svg: 'xml', xml: 'xml',
+  md: 'markdown', mdx: 'markdown',
+  py: 'python', go: 'go', rs: 'rust', java: 'java',
+  cs: 'csharp', cpp: 'cpp', cc: 'cpp', cxx: 'cpp', c: 'cpp', h: 'cpp',
+  yaml: 'yaml', yml: 'yaml', sql: 'sql',
+  sh: 'shell', bash: 'shell', zsh: 'shell',
+}
+
+const detectLanguageFromContent = (text: string): string | null => {
+  const trimmed = text.trimStart()
+  if (/^\s*[{\[]/.test(trimmed)) {
+    try { JSON.parse(text); return 'json' } catch { /* not valid json */ }
+  }
+  if (/^\s*<(!doctype|html|head|body|div|span|p|a |ul|ol|li|table|form|section|article|nav|header|footer|main)\b/i.test(trimmed)) return 'html'
+  if (/^\s*<\?xml\b/.test(trimmed) || /^\s*<[a-z][\w.-]*[^>]*xmlns/i.test(trimmed)) return 'xml'
+  if (/^\s*<svg\b/i.test(trimmed)) return 'xml'
+  if (/^\s*---\s*\n/.test(trimmed) || /^\w[\w ]*:\s/.test(trimmed)) return 'yaml'
+  if (/^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH)\b/i.test(trimmed)) return 'sql'
+  if (/^\s*#!\s*\/.*\b(bash|sh|zsh)\b/.test(trimmed)) return 'shell'
+  if (/^\s*#!\s*\/.*\bpython/.test(trimmed)) return 'python'
+  if (/^\s*(import|from)\s+\S/.test(trimmed) && /def\s+\w+|class\s+\w+.*:/.test(text)) return 'python'
+  if (/^\s*package\s+\w+/.test(trimmed) && /func\s+/.test(text)) return 'go'
+  if (/^\s*(use\s+|fn\s+|pub\s+|mod\s+|let\s+mut\s+|impl\s+)/.test(trimmed)) return 'rust'
+  if (/^\s*(import|export)\s+/.test(trimmed) || /\b(const|let|var|function|=>)\b/.test(trimmed)) {
+    if (/<[A-Z]\w*[\s/>]/.test(text)) return 'tsx'
+    return 'typescript'
+  }
+  if (/^\s*#\s+/.test(trimmed) || /^\s*```/.test(trimmed)) return 'markdown'
+  return null
+}
+
+const detectLanguage = (text: string, fileName?: string): string | null => {
+  if (fileName) {
+    const ext = fileName.split('.').pop()?.toLowerCase()
+    if (ext && EXT_TO_LANG[ext]) return EXT_TO_LANG[ext]
+  }
+  return detectLanguageFromContent(text)
+}
+
 export function TextPage() {
   const session = useSessionStore((state) => state.textSession)
+  const theme = useSessionStore((state) => state.theme)
   const setLeftText = useSessionStore((state) => state.setLeftText)
   const setRightText = useSessionStore((state) => state.setRightText)
   const setTextOptions = useSessionStore((state) => state.setTextOptions)
@@ -48,16 +110,20 @@ export function TextPage() {
   const leftFileInputRef = useRef<HTMLInputElement | null>(null)
   const rightFileInputRef = useRef<HTMLInputElement | null>(null)
   const doffFileInputRef = useRef<HTMLInputElement | null>(null)
-  const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({})
+  const leftEditorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const rightEditorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const leftDecorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
+  const rightDecorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
 
   const [frozenInputs, setFrozenInputs] = useState({
     leftText: session.leftText,
     rightText: session.rightText,
     options: session.options,
   })
-  const [activeChange, setActiveChange] = useState(0)
   const [busyMessage, setBusyMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [editorsReady, setEditorsReady] = useState(0)
+  const [onlyShowDiffs, setOnlyShowDiffs] = useState(false)
 
   useEffect(() => {
     if (session.options.realTime) {
@@ -78,36 +144,26 @@ export function TextPage() {
     [source.leftText, source.rightText, source.options],
   )
 
-  const visibleRows = useMemo(
-    () =>
-      session.options.hideUnchanged
-        ? diffResult.rows.filter((row) => row.type !== 'unchanged')
-        : diffResult.rows,
-    [session.options.hideUnchanged, diffResult.rows],
-  )
+  // Build aligned diff-only content: both sides get the same number of lines,
+  // with blank lines as padding where one side has no counterpart.
+  const aligned = useMemo(() => {
+    const leftLines: string[] = []
+    const rightLines: string[] = []
+    const types: ('added' | 'removed' | 'changed')[] = []
 
-  const changeRowIds = useMemo(
-    () => visibleRows.filter((row) => row.type !== 'unchanged').map((row) => row.id),
-    [visibleRows],
-  )
-
-  useEffect(() => {
-    if (!changeRowIds.length) {
-      setActiveChange(0)
-      return
+    for (const row of diffResult.rows) {
+      if (row.type === 'unchanged') continue
+      leftLines.push(row.type === 'added' ? '' : row.leftText)
+      rightLines.push(row.type === 'removed' ? '' : row.rightText)
+      types.push(row.type)
     }
-    setActiveChange((current) => Math.min(current, changeRowIds.length - 1))
-  }, [changeRowIds])
 
-  const jumpToChange = (index: number) => {
-    if (!changeRowIds.length) {
-      return
+    return {
+      leftText: leftLines.join('\n'),
+      rightText: rightLines.join('\n'),
+      types,
     }
-    const bounded = Math.max(0, Math.min(index, changeRowIds.length - 1))
-    setActiveChange(bounded)
-    const row = rowRefs.current[changeRowIds[bounded]]
-    row?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
+  }, [diffResult])
 
   const applyManualCompare = () => {
     setFrozenInputs({
@@ -115,6 +171,14 @@ export function TextPage() {
       rightText: session.rightText,
       options: session.options,
     })
+  }
+
+  const prevLeftLen = useRef(session.leftText.length)
+  const prevRightLen = useRef(session.rightText.length)
+
+  const autoDetect = (text: string, fileName?: string) => {
+    const lang = detectLanguage(text, fileName)
+    if (lang) setTextOptions({ language: lang })
   }
 
   const updateSideText = (side: Side, value: string, name?: string) => {
@@ -132,6 +196,7 @@ export function TextPage() {
 
     try {
       const text = await readFileText(file)
+      autoDetect(text, file.name)
       updateSideText(side, text, file.name)
       setErrorMessage(null)
     } catch {
@@ -153,6 +218,7 @@ export function TextPage() {
 
     const droppedText = event.dataTransfer.getData('text/plain')
     if (droppedText) {
+      autoDetect(droppedText)
       updateSideText(side, droppedText)
     }
   }
@@ -160,6 +226,7 @@ export function TextPage() {
   const handlePasteFromClipboard = async (side: Side) => {
     try {
       const text = await navigator.clipboard.readText()
+      autoDetect(text)
       updateSideText(side, text)
       setErrorMessage(null)
     } catch {
@@ -246,76 +313,104 @@ export function TextPage() {
     automaticLayout: true,
     scrollBeyondLastLine: false,
     wordWrap: session.options.disableWrap ? 'off' : 'on',
-  } as const
-
-  const renderSplitRows = () =>
-    visibleRows.map((row) => (
-      <tr
-        key={row.id}
-        ref={(node) => {
-          rowRefs.current[row.id] = node
-        }}
-        className={`diff-row row-${row.type} ${changeRowIds[activeChange] === row.id ? 'row-active' : ''}`}
-      >
-        <td className="line-cell">{row.leftLine ?? ''}</td>
-        <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.leftHtml || '&nbsp;' }} />
-        <td className="line-cell">{row.rightLine ?? ''}</td>
-        <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.rightHtml || '&nbsp;' }} />
-      </tr>
-    ))
-
-  const renderUnifiedRows = () => {
-    const rows: JSX.Element[] = []
-
-    visibleRows.forEach((row) => {
-      if (row.type === 'changed') {
-        rows.push(
-          <tr
-            key={`${row.id}-removed`}
-            ref={(node) => {
-              rowRefs.current[row.id] = node
-            }}
-            className={`diff-row row-removed ${changeRowIds[activeChange] === row.id ? 'row-active' : ''}`}
-          >
-            <td className="line-cell">{row.leftLine ?? ''}</td>
-            <td className="prefix-cell">-</td>
-            <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.leftHtml || '&nbsp;' }} />
-          </tr>,
-        )
-
-        rows.push(
-          <tr key={`${row.id}-added`} className={`diff-row row-added ${changeRowIds[activeChange] === row.id ? 'row-active' : ''}`}>
-            <td className="line-cell">{row.rightLine ?? ''}</td>
-            <td className="prefix-cell">+</td>
-            <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.rightHtml || '&nbsp;' }} />
-          </tr>,
-        )
-        return
-      }
-
-      const isAdded = row.type === 'added'
-      const isRemoved = row.type === 'removed'
-      const prefix = isAdded ? '+' : isRemoved ? '-' : ' '
-      const codeHtml = isRemoved ? row.leftHtml : row.rightHtml
-      const lineNumber = isAdded ? row.rightLine : row.leftLine
-
-      rows.push(
-        <tr
-          key={row.id}
-          ref={(node) => {
-            rowRefs.current[row.id] = node
-          }}
-          className={`diff-row row-${row.type} ${changeRowIds[activeChange] === row.id ? 'row-active' : ''}`}
-        >
-          <td className="line-cell">{lineNumber ?? ''}</td>
-          <td className="prefix-cell">{prefix}</td>
-          <td className="code-cell" dangerouslySetInnerHTML={{ __html: codeHtml || '&nbsp;' }} />
-        </tr>,
-      )
-    })
-
-    return rows
+    glyphMargin: true,
+    readOnly: onlyShowDiffs,
   }
+
+  const scrollSyncLock = useRef(false)
+
+  const handleLeftMount: OnMount = useCallback((editor) => {
+    leftEditorRef.current = editor
+    setEditorsReady((n) => n + 1)
+    editor.onDidScrollChange((e) => {
+      if (scrollSyncLock.current) return
+      const other = rightEditorRef.current
+      if (!other || !e.scrollTopChanged) return
+      scrollSyncLock.current = true
+      other.setScrollTop(e.scrollTop)
+      scrollSyncLock.current = false
+    })
+  }, [])
+
+  const handleRightMount: OnMount = useCallback((editor) => {
+    rightEditorRef.current = editor
+    setEditorsReady((n) => n + 1)
+    editor.onDidScrollChange((e) => {
+      if (scrollSyncLock.current) return
+      const other = leftEditorRef.current
+      if (!other || !e.scrollTopChanged) return
+      scrollSyncLock.current = true
+      other.setScrollTop(e.scrollTop)
+      scrollSyncLock.current = false
+    })
+  }, [])
+
+  // Apply diff decorations to editor gutters and line backgrounds
+  useEffect(() => {
+    const leftEditor = leftEditorRef.current
+    const rightEditor = rightEditorRef.current
+    const leftDecorations: monaco.editor.IModelDeltaDecoration[] = []
+    const rightDecorations: monaco.editor.IModelDeltaDecoration[] = []
+
+    if (onlyShowDiffs) {
+      // In aligned mode, line numbers map 1:1 to aligned.types
+      aligned.types.forEach((type, i) => {
+        const line = i + 1
+        const classMap = { removed: 'removed', added: 'added', changed: 'changed' } as const
+        const cls = classMap[type]
+        if (type !== 'added') {
+          leftDecorations.push({
+            range: new monaco.Range(line, 1, line, 1),
+            options: { isWholeLine: true, className: `editor-line-${cls}`, glyphMarginClassName: `editor-glyph-${cls}` },
+          })
+        }
+        if (type !== 'removed') {
+          rightDecorations.push({
+            range: new monaco.Range(line, 1, line, 1),
+            options: { isWholeLine: true, className: `editor-line-${cls}`, glyphMarginClassName: `editor-glyph-${cls}` },
+          })
+        }
+      })
+    } else {
+      // Normal mode: use original line numbers from diff result
+      for (const row of diffResult.rows) {
+        if (row.type === 'unchanged') continue
+        if (row.type === 'removed' && row.leftLine != null) {
+          leftDecorations.push({
+            range: new monaco.Range(row.leftLine, 1, row.leftLine, 1),
+            options: { isWholeLine: true, className: 'editor-line-removed', glyphMarginClassName: 'editor-glyph-removed' },
+          })
+        } else if (row.type === 'added' && row.rightLine != null) {
+          rightDecorations.push({
+            range: new monaco.Range(row.rightLine, 1, row.rightLine, 1),
+            options: { isWholeLine: true, className: 'editor-line-added', glyphMarginClassName: 'editor-glyph-added' },
+          })
+        } else if (row.type === 'changed') {
+          if (row.leftLine != null) {
+            leftDecorations.push({
+              range: new monaco.Range(row.leftLine, 1, row.leftLine, 1),
+              options: { isWholeLine: true, className: 'editor-line-changed', glyphMarginClassName: 'editor-glyph-changed' },
+            })
+          }
+          if (row.rightLine != null) {
+            rightDecorations.push({
+              range: new monaco.Range(row.rightLine, 1, row.rightLine, 1),
+              options: { isWholeLine: true, className: 'editor-line-changed', glyphMarginClassName: 'editor-glyph-changed' },
+            })
+          }
+        }
+      }
+    }
+
+    if (leftEditor) {
+      if (leftDecorationsRef.current) leftDecorationsRef.current.clear()
+      leftDecorationsRef.current = leftEditor.createDecorationsCollection(leftDecorations)
+    }
+    if (rightEditor) {
+      if (rightDecorationsRef.current) rightDecorationsRef.current.clear()
+      rightDecorationsRef.current = rightEditor.createDecorationsCollection(rightDecorations)
+    }
+  }, [diffResult, aligned, editorsReady, onlyShowDiffs])
 
   return (
     <section className="text-page">
@@ -352,11 +447,19 @@ export function TextPage() {
           </header>
           <Editor
             height="300px"
+            theme={theme === 'dark' ? 'vs-dark' : 'light'}
             language={session.options.language}
-            value={session.leftText}
+            value={onlyShowDiffs ? aligned.leftText : session.leftText}
             options={editorOptions}
+            onMount={handleLeftMount}
             onChange={(value) => {
-              setLeftText(value ?? '')
+              if (onlyShowDiffs) return
+              const v = value ?? ''
+              if (v.length - prevLeftLen.current > 10) {
+                autoDetect(v)
+              }
+              prevLeftLen.current = v.length
+              setLeftText(v)
             }}
           />
           <input
@@ -393,11 +496,19 @@ export function TextPage() {
           </header>
           <Editor
             height="300px"
+            theme={theme === 'dark' ? 'vs-dark' : 'light'}
             language={session.options.language}
-            value={session.rightText}
+            value={onlyShowDiffs ? aligned.rightText : session.rightText}
             options={editorOptions}
+            onMount={handleRightMount}
             onChange={(value) => {
-              setRightText(value ?? '')
+              if (onlyShowDiffs) return
+              const v = value ?? ''
+              if (v.length - prevRightLen.current > 10) {
+                autoDetect(v)
+              }
+              prevRightLen.current = v.length
+              setRightText(v)
             }}
           />
           <input
@@ -427,22 +538,22 @@ export function TextPage() {
           <label>
             <input
               type="checkbox"
-              checked={session.options.hideUnchanged}
-              onChange={(event) => {
-                setTextOptions({ hideUnchanged: event.target.checked })
-              }}
-            />
-            Hide unchanged lines
-          </label>
-          <label>
-            <input
-              type="checkbox"
               checked={session.options.disableWrap}
               onChange={(event) => {
                 setTextOptions({ disableWrap: event.target.checked })
               }}
             />
             Disable line wrap
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={onlyShowDiffs}
+              onChange={(event) => {
+                setOnlyShowDiffs(event.target.checked)
+              }}
+            />
+            Only show diffs
           </label>
           {!session.options.realTime && (
             <button type="button" onClick={applyManualCompare}>
@@ -452,30 +563,6 @@ export function TextPage() {
         </div>
 
         <div className="toolbar-group">
-          <label>
-            View
-            <select
-              value={session.options.viewMode}
-              onChange={(event) => {
-                setTextOptions({ viewMode: event.target.value as 'split' | 'unified' })
-              }}
-            >
-              <option value="split">Split</option>
-              <option value="unified">Unified</option>
-            </select>
-          </label>
-          <label>
-            Precision
-            <select
-              value={session.options.precision}
-              onChange={(event) => {
-                setTextOptions({ precision: event.target.value as 'word' | 'character' })
-              }}
-            >
-              <option value="word">Word</option>
-              <option value="character">Character</option>
-            </select>
-          </label>
           <label>
             Syntax
             <select
@@ -494,122 +581,7 @@ export function TextPage() {
         </div>
       </div>
 
-      <details className="option-panel" open>
-        <summary>Ignore options</summary>
-        <div className="option-grid">
-          <label>
-            <input
-              type="checkbox"
-              checked={session.options.ignoreLeadingTrailingWhitespace}
-              onChange={(event) => {
-                setTextOptions({ ignoreLeadingTrailingWhitespace: event.target.checked })
-              }}
-            />
-            Leading/trailing whitespace
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={session.options.ignoreAllWhitespace}
-              onChange={(event) => {
-                setTextOptions({ ignoreAllWhitespace: event.target.checked })
-              }}
-            />
-            All whitespace
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={session.options.ignoreCase}
-              onChange={(event) => {
-                setTextOptions({ ignoreCase: event.target.checked })
-              }}
-            />
-            Case changes
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={session.options.ignoreBlankLines}
-              onChange={(event) => {
-                setTextOptions({ ignoreBlankLines: event.target.checked })
-              }}
-            />
-            Blank lines
-          </label>
-        </div>
-      </details>
-
-      <details className="option-panel" open>
-        <summary>Transform options</summary>
-        <div className="option-grid">
-          <label>
-            <input
-              type="checkbox"
-              checked={session.options.trimTrailingWhitespace}
-              onChange={(event) => {
-                setTextOptions({ trimTrailingWhitespace: event.target.checked })
-              }}
-            />
-            Trim trailing whitespace
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={session.options.normalizeUnicode}
-              onChange={(event) => {
-                setTextOptions({ normalizeUnicode: event.target.checked })
-              }}
-            />
-            Normalize unicode
-          </label>
-          <label>
-            Tabs/spaces
-            <select
-              value={session.options.tabSpaceMode}
-              onChange={(event) => {
-                setTextOptions({
-                  tabSpaceMode: event.target.value as
-                    | 'none'
-                    | 'tabsToSpaces'
-                    | 'spacesToTabs',
-                })
-              }}
-            >
-              <option value="none">No conversion</option>
-              <option value="tabsToSpaces">Convert tabs to spaces</option>
-              <option value="spacesToTabs">Convert spaces to tabs</option>
-            </select>
-          </label>
-        </div>
-      </details>
-
-      <div className="action-bar" role="toolbar" aria-label="Diff navigation and actions">
-        <div className="toolbar-group">
-          <button type="button" onClick={() => jumpToChange(0)} disabled={!changeRowIds.length} aria-label="Jump to first change">
-            First change
-          </button>
-          <button
-            type="button"
-            onClick={() => jumpToChange(activeChange - 1)}
-            disabled={!changeRowIds.length}
-            aria-label="Previous change"
-          >
-            Previous
-          </button>
-          <button
-            type="button"
-            onClick={() => jumpToChange(activeChange + 1)}
-            disabled={!changeRowIds.length}
-            aria-label="Next change"
-          >
-            Next
-          </button>
-          <span className="change-counter">
-            {changeRowIds.length ? `${activeChange + 1}/${changeRowIds.length}` : '0/0'}
-          </span>
-        </div>
-
+      <div className="action-bar" role="toolbar" aria-label="Actions">
         <div className="toolbar-group">
           <button type="button" onClick={swapSides} aria-label="Swap left and right inputs">
             Swap inputs
@@ -638,38 +610,6 @@ export function TextPage() {
           />
         </div>
       </div>
-
-      <section className="diff-panel">
-        <header className="diff-header">
-          <h2>Diff Output</h2>
-          <span>{visibleRows.length} rows</span>
-        </header>
-        <div className={`diff-table-wrap ${session.options.disableWrap ? 'nowrap' : ''}`}>
-          <table className="diff-table" role="table" aria-label={`Diff output: ${diffResult.stats.added} added, ${diffResult.stats.removed} removed, ${diffResult.stats.changed} changed`}>
-            {session.options.viewMode === 'split' ? (
-              <thead>
-                <tr>
-                  <th>L#</th>
-                  <th>Left</th>
-                  <th>R#</th>
-                  <th>Right</th>
-                </tr>
-              </thead>
-            ) : (
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Δ</th>
-                  <th>Text</th>
-                </tr>
-              </thead>
-            )}
-            <tbody>
-              {session.options.viewMode === 'split' ? renderSplitRows() : renderUnifiedRows()}
-            </tbody>
-          </table>
-        </div>
-      </section>
 
       {(busyMessage || errorMessage) && (
         <div

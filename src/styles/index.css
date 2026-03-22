@@ -438,14 +438,17 @@ h2 {
 
 .row-added {
   background: var(--added-bg);
+  color: var(--added-fg);
 }
 
 .row-removed {
   background: var(--removed-bg);
+  color: var(--removed-fg);
 }
 
 .row-changed {
   background: var(--changed-bg);
+  color: var(--changed-fg);
 }
 
 .row-active {
@@ -454,15 +457,40 @@ h2 {
 }
 
 .intraline-added {
-  background: rgba(35, 177, 89, 0.32);
-  color: inherit;
+  background: var(--added-bg);
+  color: var(--added-fg);
   padding: 0;
 }
 
 .intraline-removed {
-  background: rgba(210, 36, 56, 0.24);
-  color: inherit;
+  background: var(--removed-bg);
+  color: var(--removed-fg);
   padding: 0;
+}
+
+/* Monaco editor inline diff decorations */
+.editor-line-added {
+  background: var(--added-bg) !important;
+}
+
+.editor-line-removed {
+  background: var(--removed-bg) !important;
+}
+
+.editor-line-changed {
+  background: var(--changed-bg) !important;
+}
+
+.editor-glyph-added {
+  border-left: 3px solid var(--added-fg);
+}
+
+.editor-glyph-removed {
+  border-left: 3px solid var(--removed-fg);
+}
+
+.editor-glyph-changed {
+  border-left: 3px solid var(--changed-fg);
 }
 
 .status-bar {
