@@ -8,6 +8,19 @@
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#171d25" />
     <meta name="description" content="Local-first, offline-ready diff workspace for text, images, documents, and more." />
     <title>doff — diff workspace</title>
+    <script>
+      // Point Monaco Editor to local node_modules files instead of CDN
+      window.MonacoEnvironment = {
+        getWorkerUrl: function (moduleId, label) {
+          const base = '/node_modules/monaco-editor/min/vs';
+          if (label === 'json') return base + '/base/worker/json.worker.js';
+          if (label === 'css' || label === 'scss' || label === 'less') return base + '/base/worker/css.worker.js';
+          if (label === 'html' || label === 'handlebars' || label === 'razor') return base + '/base/worker/html.worker.js';
+          if (label === 'typescript' || label === 'javascript') return base + '/base/worker/ts.worker.js';
+          return base + '/base/worker/editor.worker.js';
+        }
+      };
+    </script>
   </head>
   <body>
     <div id="root"></div>

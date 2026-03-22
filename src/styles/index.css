@@ -83,17 +83,20 @@
   top: 0;
 }
 
-html,
-body,
-#root {
-  margin: 0;
-  min-height: 100%;
+html {
+  height: 100%;
 }
 
 body {
+  height: 100%;
+  margin: 0;
   font-family: var(--font-sans);
   background: linear-gradient(180deg, var(--surface-muted), var(--neutral-0));
   color: var(--text);
+}
+
+#root {
+  min-height: 100vh;
 }
 
 button,

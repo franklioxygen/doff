@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  // Monaco Editor workers must NOT be pre-bundled - serve from node_modules as-is
+  optimizeDeps: {
+    exclude: ['monaco-editor'],
+  },
   plugins: [
     react(),
     VitePWA({
@@ -11,7 +15,7 @@ export default defineConfig({
       manifest: {
         name: 'doff — diff workspace',
         short_name: 'doff',
-        description: 'Local-first, offline-ready diff workspace for text, images, documents, and more.',
+        description: 'Local-first, offline-ready diff workspace.',
         theme_color: '#0d7a43',
         background_color: '#f2f4f6',
         display: 'standalone',

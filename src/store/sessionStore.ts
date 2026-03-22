@@ -1,6 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+// Safari < 15.4 doesn't have crypto.randomUUID
+const randomUUID = () =>
+  typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)
+
 export type DiffViewMode = 'split' | 'unified'
 export type DiffPrecision = 'word' | 'character'
 export type TabSpaceMode = 'none' | 'tabsToSpaces' | 'spacesToTabs'
@@ -64,7 +68,7 @@ const defaultTextOptions: TextDiffOptions = {
 const createDefaultSession = (): TextSession => {
   const now = new Date().toISOString()
   return {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     createdAt: now,
     updatedAt: now,
     leftText: '',
