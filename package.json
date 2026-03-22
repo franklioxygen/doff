@@ -16,12 +16,14 @@
     "diff": "^8.0.3",
     "fflate": "^0.8.2",
     "file-saver": "^2.0.5",
+    "jszip": "^3.10.1",
     "monaco-editor": "^0.55.1",
     "pdfjs-dist": "^5.5.207",
     "pixelmatch": "^7.1.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.1",
+    "xlsx": "^0.18.5",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

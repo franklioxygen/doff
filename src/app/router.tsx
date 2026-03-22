@@ -4,6 +4,8 @@ import { PlaceholderPage } from '../components/layout/PlaceholderPage'
 import { TextPage } from '../features/text/TextPage'
 import { ImageComparePage } from '../features/images/ImageComparePage'
 import { DocumentComparePage } from '../features/documents/DocumentComparePage'
+import { SpreadsheetComparePage } from '../features/spreadsheets/SpreadsheetComparePage'
+import { FolderComparePage } from '../features/folders/FolderComparePage'
 
 export const router = createBrowserRouter([
   {
@@ -16,21 +18,11 @@ export const router = createBrowserRouter([
       { path: 'documents', element: <DocumentComparePage /> },
       {
         path: 'spreadsheets',
-        element: (
-          <PlaceholderPage
-            title="Spreadsheet Compare"
-            description="Phase 3 will add sheet-level and cell-level diffing."
-          />
-        ),
+        element: <SpreadsheetComparePage />,
       },
       {
         path: 'folders',
-        element: (
-          <PlaceholderPage
-            title="Folder Compare"
-            description="Phase 3 will add directory and zip manifest comparisons."
-          />
-        ),
+        element: <FolderComparePage />,
       },
       {
         path: 'settings',

@@ -75,11 +75,29 @@ export type DocumentSession = {
   selectedPage: number
 }
 
+export type SpreadsheetSession = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  leftFile: any | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rightFile: any | null
+  leftSheet: string
+  rightSheet: string
+}
+
+export type FolderSession = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  leftFolder: any | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rightFolder: any | null
+}
+
 type SessionState = {
   theme: 'light' | 'dark'
   textSession: TextSession
   imageSession: ImageSession
   documentSession: DocumentSession
+  spreadsheetSession: SpreadsheetSession
+  folderSession: FolderSession
   setTheme: (theme: 'light' | 'dark') => void
   toggleTheme: () => void
   setLeftText: (value: string, sourceName?: string) => void
@@ -92,6 +110,8 @@ type SessionState = {
   clearImageSession: () => void
   setDocumentSession: (partial: Partial<DocumentSession>) => void
   clearDocumentSession: () => void
+  setSpreadsheetSession: (partial: Partial<SpreadsheetSession>) => void
+  setFolderSession: (partial: Partial<FolderSession>) => void
 }
 
 const defaultTextOptions: TextDiffOptions = {
@@ -143,6 +163,16 @@ export const useSessionStore = create<SessionState>()(
         leftDoc: null,
         rightDoc: null,
         selectedPage: 1,
+      },
+      spreadsheetSession: {
+        leftFile: null,
+        rightFile: null,
+        leftSheet: '',
+        rightSheet: '',
+      },
+      folderSession: {
+        leftFolder: null,
+        rightFolder: null,
       },
       setTheme: (theme) => set({ theme }),
       toggleTheme: () =>
@@ -218,6 +248,14 @@ export const useSessionStore = create<SessionState>()(
             selectedPage: 1,
           },
         }),
+      setSpreadsheetSession: (partial) =>
+        set((state) => ({
+          spreadsheetSession: { ...state.spreadsheetSession, ...partial },
+        })),
+      setFolderSession: (partial) =>
+        set((state) => ({
+          folderSession: { ...state.folderSession, ...partial },
+        })),
     }),
     {
       name: 'doff-session-store',
