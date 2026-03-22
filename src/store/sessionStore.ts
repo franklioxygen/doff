@@ -36,9 +36,50 @@ export type TextSession = {
   options: TextDiffOptions
 }
 
+export type ImageCompareMode = 'slider' | 'fade' | 'overlay' | 'diff'
+
+export type ImageInfo = {
+  name: string
+  width: number
+  height: number
+  size: number
+  dataUrl: string
+  bitmap: ImageBitmap
+}
+
+export type ImageSession = {
+  leftImage: ImageInfo | null
+  rightImage: ImageInfo | null
+  mode: ImageCompareMode
+  diffPercent: number | null
+  sliderPosition: number
+}
+
+export type PdfPage = {
+  pageNum: number
+  text: string
+  width: number
+  height: number
+  thumbnail: string | null
+}
+
+export type PdfDocInfo = {
+  name: string
+  numPages: number
+  pages: PdfPage[]
+}
+
+export type DocumentSession = {
+  leftDoc: PdfDocInfo | null
+  rightDoc: PdfDocInfo | null
+  selectedPage: number
+}
+
 type SessionState = {
   theme: 'light' | 'dark'
   textSession: TextSession
+  imageSession: ImageSession
+  documentSession: DocumentSession
   setTheme: (theme: 'light' | 'dark') => void
   toggleTheme: () => void
   setLeftText: (value: string, sourceName?: string) => void
@@ -47,6 +88,10 @@ type SessionState = {
   swapSides: () => void
   clearTextSession: () => void
   overwriteTextSession: (session: Partial<TextSession>) => void
+  setImageSession: (partial: Partial<ImageSession>) => void
+  clearImageSession: () => void
+  setDocumentSession: (partial: Partial<DocumentSession>) => void
+  clearDocumentSession: () => void
 }
 
 const defaultTextOptions: TextDiffOptions = {
@@ -87,6 +132,18 @@ export const useSessionStore = create<SessionState>()(
     (set) => ({
       theme: 'light',
       textSession: createDefaultSession(),
+      imageSession: {
+        leftImage: null,
+        rightImage: null,
+        mode: 'slider',
+        diffPercent: null,
+        sliderPosition: 50,
+      },
+      documentSession: {
+        leftDoc: null,
+        rightDoc: null,
+        selectedPage: 1,
+      },
       setTheme: (theme) => set({ theme }),
       toggleTheme: () =>
         set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
@@ -135,6 +192,32 @@ export const useSessionStore = create<SessionState>()(
             },
           }),
         })),
+      setImageSession: (partial) =>
+        set((state) => ({
+          imageSession: { ...state.imageSession, ...partial },
+        })),
+      clearImageSession: () =>
+        set({
+          imageSession: {
+            leftImage: null,
+            rightImage: null,
+            mode: 'slider',
+            diffPercent: null,
+            sliderPosition: 50,
+          },
+        }),
+      setDocumentSession: (partial) =>
+        set((state) => ({
+          documentSession: { ...state.documentSession, ...partial },
+        })),
+      clearDocumentSession: () =>
+        set({
+          documentSession: {
+            leftDoc: null,
+            rightDoc: null,
+            selectedPage: 1,
+          },
+        }),
     }),
     {
       name: 'doff-session-store',

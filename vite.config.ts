@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  optimizeDeps: {
+    exclude: ['pdfjs-dist'],
+  },
   plugins: [
     react(),
     VitePWA({
@@ -39,6 +42,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallback: '/index.html',
         cleanupOutdatedCaches: true,
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
       },
     }),
   ],

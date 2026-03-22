@@ -245,11 +245,12 @@ export function TextPage() {
   }
 
   const handleExportHtml = async () => {
+    if (!monaco) return
     setBusyMessage('Exporting HTML...')
     try {
       await exportDiffHtml({
         monaco,
-        rows: visibleRows,
+        rows: diffResult.rows,
         language: session.options.language,
         viewMode: session.options.viewMode,
       })
@@ -312,7 +313,7 @@ export function TextPage() {
     fontSize: 13,
     automaticLayout: true,
     scrollBeyondLastLine: false,
-    wordWrap: session.options.disableWrap ? 'off' : 'on',
+    wordWrap: (session.options.disableWrap ? 'off' : 'on') as 'on' | 'off',
     glyphMargin: true,
     readOnly: onlyShowDiffs,
   }
@@ -347,6 +348,7 @@ export function TextPage() {
 
   // Apply diff decorations to editor gutters and line backgrounds
   useEffect(() => {
+    if (!monaco) return
     const leftEditor = leftEditorRef.current
     const rightEditor = rightEditorRef.current
     const leftDecorations: monaco.editor.IModelDeltaDecoration[] = []

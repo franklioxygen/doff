@@ -2,6 +2,8 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppLayout } from '../components/layout/AppLayout'
 import { PlaceholderPage } from '../components/layout/PlaceholderPage'
 import { TextPage } from '../features/text/TextPage'
+import { ImageComparePage } from '../features/images/ImageComparePage'
+import { DocumentComparePage } from '../features/documents/DocumentComparePage'
 
 export const router = createBrowserRouter([
   {
@@ -10,24 +12,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/text" replace /> },
       { path: 'text', element: <TextPage /> },
-      {
-        path: 'images',
-        element: (
-          <PlaceholderPage
-            title="Image Compare"
-            description="Phase 2 will add local pixel diff tools for images."
-          />
-        ),
-      },
-      {
-        path: 'documents',
-        element: (
-          <PlaceholderPage
-            title="Document Compare"
-            description="Phase 2 will add PDF and DOCX local comparison."
-          />
-        ),
-      },
+      { path: 'images', element: <ImageComparePage /> },
+      { path: 'documents', element: <DocumentComparePage /> },
       {
         path: 'spreadsheets',
         element: (
@@ -64,6 +50,7 @@ export const router = createBrowserRouter([
           />
         ),
       },
+      { path: '*', element: <Navigate to="/text" replace /> },
     ],
   },
 ])
