@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { JSX } from 'react'
 import Editor, { useMonaco } from '@monaco-editor/react'
-import type { DiffRow } from './textDiff'
 import { computeDiff } from './textDiff'
 import { exportDiffHtml, loadDoffBundle, saveDoffBundle } from './exporters'
 import { useSessionStore } from '../../store/sessionStore'
@@ -140,7 +140,7 @@ export function TextPage() {
   }
 
   const handleDrop = async (
-    event: React.DragEvent<HTMLDivElement>,
+    event: React.DragEvent<HTMLElement>,
     side: Side,
   ) => {
     event.preventDefault()
@@ -339,13 +339,13 @@ export function TextPage() {
           <header className="pane-header">
             <strong>Left input</strong>
             <div className="pane-actions">
-              <button type="button" onClick={() => leftFileInputRef.current?.click()}>
+              <button type="button" onClick={() => leftFileInputRef.current?.click()} aria-label="Open file for left input">
                 Open file
               </button>
-              <button type="button" onClick={() => void handlePasteFromClipboard('left')}>
+              <button type="button" onClick={() => void handlePasteFromClipboard('left')} aria-label="Paste text into left input">
                 Paste text
               </button>
-              <button type="button" onClick={() => void handleCopyPane('left')}>
+              <button type="button" onClick={() => void handleCopyPane('left')} aria-label="Copy left input text">
                 Copy left
               </button>
             </div>
@@ -380,13 +380,13 @@ export function TextPage() {
           <header className="pane-header">
             <strong>Right input</strong>
             <div className="pane-actions">
-              <button type="button" onClick={() => rightFileInputRef.current?.click()}>
+              <button type="button" onClick={() => rightFileInputRef.current?.click()} aria-label="Open file for right input">
                 Open file
               </button>
-              <button type="button" onClick={() => void handlePasteFromClipboard('right')}>
+              <button type="button" onClick={() => void handlePasteFromClipboard('right')} aria-label="Paste text into right input">
                 Paste text
               </button>
-              <button type="button" onClick={() => void handleCopyPane('right')}>
+              <button type="button" onClick={() => void handleCopyPane('right')} aria-label="Copy right input text">
                 Copy right
               </button>
             </div>
@@ -412,7 +412,7 @@ export function TextPage() {
         </section>
       </div>
 
-      <div className="toolbar">
+      <div className="toolbar" role="toolbar" aria-label="Diff options">
         <div className="toolbar-group">
           <label>
             <input
@@ -584,15 +584,16 @@ export function TextPage() {
         </div>
       </details>
 
-      <div className="action-bar">
+      <div className="action-bar" role="toolbar" aria-label="Diff navigation and actions">
         <div className="toolbar-group">
-          <button type="button" onClick={() => jumpToChange(0)} disabled={!changeRowIds.length}>
+          <button type="button" onClick={() => jumpToChange(0)} disabled={!changeRowIds.length} aria-label="Jump to first change">
             First change
           </button>
           <button
             type="button"
             onClick={() => jumpToChange(activeChange - 1)}
             disabled={!changeRowIds.length}
+            aria-label="Previous change"
           >
             Previous
           </button>
@@ -600,6 +601,7 @@ export function TextPage() {
             type="button"
             onClick={() => jumpToChange(activeChange + 1)}
             disabled={!changeRowIds.length}
+            aria-label="Next change"
           >
             Next
           </button>
@@ -609,19 +611,19 @@ export function TextPage() {
         </div>
 
         <div className="toolbar-group">
-          <button type="button" onClick={swapSides}>
+          <button type="button" onClick={swapSides} aria-label="Swap left and right inputs">
             Swap inputs
           </button>
-          <button type="button" onClick={handleClearSession}>
+          <button type="button" onClick={handleClearSession} aria-label="Clear current session">
             Clear session
           </button>
-          <button type="button" onClick={handleSaveDoff}>
+          <button type="button" onClick={handleSaveDoff} aria-label="Export session as .doff file">
             Export .doff
           </button>
-          <button type="button" onClick={handleExportHtml}>
+          <button type="button" onClick={handleExportHtml} aria-label="Export diff as HTML file">
             Export HTML
           </button>
-          <button type="button" onClick={() => doffFileInputRef.current?.click()}>
+          <button type="button" onClick={() => doffFileInputRef.current?.click()} aria-label="Load .doff session file">
             Load .doff
           </button>
           <input
@@ -643,7 +645,7 @@ export function TextPage() {
           <span>{visibleRows.length} rows</span>
         </header>
         <div className={`diff-table-wrap ${session.options.disableWrap ? 'nowrap' : ''}`}>
-          <table className="diff-table" role="table">
+          <table className="diff-table" role="table" aria-label={`Diff output: ${diffResult.stats.added} added, ${diffResult.stats.removed} removed, ${diffResult.stats.changed} changed`}>
             {session.options.viewMode === 'split' ? (
               <thead>
                 <tr>
@@ -670,7 +672,11 @@ export function TextPage() {
       </section>
 
       {(busyMessage || errorMessage) && (
-        <div className="status-bar" role="status">
+        <div
+          className="status-bar"
+          role={errorMessage ? 'alert' : 'status'}
+          aria-live={errorMessage ? 'polite' : undefined}
+        >
           {busyMessage ?? errorMessage}
         </div>
       )}
