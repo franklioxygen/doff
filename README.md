@@ -13,9 +13,12 @@
 </p>
 
 <p align="center">
-  <a href="https://doff-franklioxygen.vercel.app"><strong>Live Demo</strong></a>
+  <a href="README.zh-CN.md">中文文档</a>
 </p>
 
+<p align="center">
+  <a href="https://doff-franklioxygen.vercel.app"><strong>Live Demo</strong></a>
+</p>
 
 ![Screenshot 2026-03-23 at 11 43 06 AM](https://github.com/user-attachments/assets/93ef493a-8a92-420b-924e-b9cbcd1dc551)
 
@@ -38,7 +41,15 @@
 
 ## Getting Started
 
-### Run with Docker
+doff can be used in two ways: as a **standalone app** installed directly on your device, or as a **containerized service** deployed via Docker.
+
+### Standalone App
+
+Download the latest installer for your platform from the [Releases](https://github.com/franklioxygen/doff/releases) page. Available for macOS, Windows, and Linux.
+
+You can also visit the [Live Demo](https://doff-franklioxygen.vercel.app) and install it as a Progressive Web App from your browser.
+
+### Container Deployment (Docker)
 
 ```bash
 docker run -d -p 5560:80 --name doff ghcr.io/franklioxygen/doff:latest
@@ -63,8 +74,9 @@ npm run dev
 
 ## Requirements
 
-- Any modern browser (Chrome, Firefox, Safari, Edge)
-- Node.js 20+ (for development)
+- **Standalone App**: Any modern browser (Chrome, Firefox, Safari, Edge)
+- **Container Deployment**: Docker or Docker Compose
+- **Development**: Node.js 20+
 
 ## License
 
