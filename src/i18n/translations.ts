@@ -6,6 +6,8 @@ const en = {
   'app.privacyBadge': 'Local only • Offline-ready • No uploads',
   'app.switchToLight': 'Switch to light mode',
   'app.switchToDark': 'Switch to dark mode',
+  'app.loadingWorkspaceTitle': 'Loading workspace',
+  'app.loadingWorkspaceBody': 'Preparing this compare view and its local tools.',
 
   'nav.text': 'Text',
   'nav.images': 'Images',
@@ -242,6 +244,8 @@ const es: TranslationDictionary = {
   'app.privacyBadge': 'Solo local • Listo sin conexión • Sin cargas',
   'app.switchToLight': 'Cambiar al modo claro',
   'app.switchToDark': 'Cambiar al modo oscuro',
+  'app.loadingWorkspaceTitle': 'Cargando espacio de trabajo',
+  'app.loadingWorkspaceBody': 'Preparando esta vista de comparación y sus herramientas locales.',
 
   'nav.text': 'Texto',
   'nav.images': 'Imágenes',
@@ -476,6 +480,8 @@ const fr: TranslationDictionary = {
   'app.privacyBadge': 'Local uniquement • Hors ligne • Aucun envoi',
   'app.switchToLight': 'Passer au mode clair',
   'app.switchToDark': 'Passer au mode sombre',
+  'app.loadingWorkspaceTitle': 'Chargement de l’espace de travail',
+  'app.loadingWorkspaceBody': 'Préparation de cette vue de comparaison et de ses outils locaux.',
 
   'nav.text': 'Texte',
   'nav.images': 'Images',
@@ -710,6 +716,8 @@ const de: TranslationDictionary = {
   'app.privacyBadge': 'Nur lokal • Offline-fähig • Keine Uploads',
   'app.switchToLight': 'Zum hellen Modus wechseln',
   'app.switchToDark': 'Zum dunklen Modus wechseln',
+  'app.loadingWorkspaceTitle': 'Arbeitsbereich wird geladen',
+  'app.loadingWorkspaceBody': 'Diese Vergleichsansicht und ihre lokalen Werkzeuge werden vorbereitet.',
 
   'nav.text': 'Text',
   'nav.images': 'Bilder',
@@ -944,6 +952,8 @@ const ja: TranslationDictionary = {
   'app.privacyBadge': 'ローカルのみ • オフライン対応 • アップロードなし',
   'app.switchToLight': 'ライトモードに切り替え',
   'app.switchToDark': 'ダークモードに切り替え',
+  'app.loadingWorkspaceTitle': 'ワークスペースを読み込み中',
+  'app.loadingWorkspaceBody': 'この比較ビューとローカルツールを準備しています。',
 
   'nav.text': 'テキスト',
   'nav.images': '画像',
@@ -1178,6 +1188,8 @@ const zh: TranslationDictionary = {
   'app.privacyBadge': '仅本地 · 离线可用 · 无上传',
   'app.switchToLight': '切换到浅色模式',
   'app.switchToDark': '切换到深色模式',
+  'app.loadingWorkspaceTitle': '正在加载工作区',
+  'app.loadingWorkspaceBody': '正在准备该比较视图及其本地工具。',
 
   'nav.text': '文本',
   'nav.images': '图片',

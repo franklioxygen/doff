@@ -354,7 +354,8 @@ function DiffTable({ diff }: { diff: SheetDiff }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function SpreadsheetComparePage() {
-  const { spreadsheetSession, setSpreadsheetSession } = useSessionStore()
+  const spreadsheetSession = useSessionStore((state) => state.spreadsheetSession)
+  const setSpreadsheetSession = useSessionStore((state) => state.setSpreadsheetSession)
   const { t } = useI18n()
 
   const [leftFile, setLeftFile] = useState<LoadedFile | null>(spreadsheetSession.leftFile)

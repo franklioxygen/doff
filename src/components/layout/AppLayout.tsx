@@ -1,7 +1,9 @@
+import { Suspense } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useSessionStore } from '../../store/sessionStore'
 import { useI18n } from '../../i18n'
 import { Footer } from './Footer'
+import { PlaceholderPage } from './PlaceholderPage'
 
 const NAV_ITEMS = [
   { labelKey: 'nav.text', to: '/text' },
@@ -71,7 +73,16 @@ export function AppLayout() {
           </div>
         </header>
         <main id="main-content" className="workspace" role="main">
-          <Outlet />
+          <Suspense
+            fallback={(
+              <PlaceholderPage
+                title={t('app.loadingWorkspaceTitle')}
+                description={t('app.loadingWorkspaceBody')}
+              />
+            )}
+          >
+            <Outlet />
+          </Suspense>
         </main>
         <Footer />
       </div>

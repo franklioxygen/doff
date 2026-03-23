@@ -478,7 +478,8 @@ function formatSize(bytes: number): string {
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export function FolderComparePage() {
-  const { folderSession, setFolderSession } = useSessionStore()
+  const folderSession = useSessionStore((state) => state.folderSession)
+  const setFolderSession = useSessionStore((state) => state.setFolderSession)
   const { t } = useI18n()
 
   const [leftFolder, setLeftFolder] = useState<LoadedFolder | null>(folderSession.leftFolder)

@@ -29,3 +29,6 @@ dist-ssr
 # Tool configs
 .codacy
 .cursor
+
+# Documentation
+docs/*
