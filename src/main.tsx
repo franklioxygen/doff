@@ -2,6 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import { registerSW } from 'virtual:pwa-register'
+
+const isTauri = '__TAURI_INTERNALS__' in window
 import '@fontsource/ibm-plex-sans/400.css'
 import '@fontsource/ibm-plex-sans/500.css'
 import '@fontsource/ibm-plex-sans/600.css'
@@ -12,9 +14,11 @@ import { useSessionStore } from './store/sessionStore'
 import { getPreferredLocale, resolveSupportedLocale } from './i18n/config'
 import './styles/index.css'
 
-registerSW({
-  immediate: true,
-})
+if (!isTauri) {
+  registerSW({
+    immediate: true,
+  })
+}
 
 // Sync theme state to/from .dark class on <html>
 // Runs before React renders to avoid flash of wrong theme.
