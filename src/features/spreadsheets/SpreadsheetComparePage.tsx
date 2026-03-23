@@ -1,7 +1,26 @@
 import { useCallback, useMemo, useState } from 'react'
+import {
+  ActionIcon,
+  Button,
+  Group,
+  Select,
+  SimpleGrid,
+  Stack,
+  Text,
+} from '@mantine/core'
+import {
+  IconArrowsLeftRight,
+  IconFileSpreadsheet,
+  IconTrash,
+  IconUpload,
+} from '@tabler/icons-react'
 import * as XLSX from 'xlsx'
 import { useSessionStore, type SpreadsheetSession } from '../../store/sessionStore'
 import { useI18n } from '../../i18n'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { PageHero } from '../../components/ui/PageHero'
+import { StatBadge } from '../../components/ui/StatBadge'
+import { SurfaceCard } from '../../components/ui/SurfaceCard'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -200,7 +219,7 @@ function DropZone({
   }
 
   return (
-    <div className={`sz-drop-zone ${dragging ? 'dragging' : ''} ${file ? 'has-file' : ''}`}>
+    <div className={`upload-drop-zone ${dragging ? 'upload-drop-zone-active' : ''} ${file ? 'upload-drop-zone-filled' : ''}`}>
       <input
         type="file"
         accept={accept}
@@ -212,36 +231,43 @@ function DropZone({
         id={inputId}
       />
       {file ? (
-        <div className="sz-file-loaded">
+        <div className="upload-preview upload-preview-compact">
           <svg className="sz-file-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
             <rect x="3" y="3" width="18" height="18" rx="2" />
             <line x1="3" y1="9" x2="21" y2="9" />
             <line x1="3" y1="15" x2="21" y2="15" />
             <line x1="9" y1="3" x2="9" y2="21" />
           </svg>
-          <div className="sz-file-name">{file.name}</div>
-          <div className="sz-file-meta">{t('spreadsheets.sheetsCount', { count: formatNumber(file.sheets.length) })}</div>
-          <button
+          <Stack gap={2} className="upload-preview-info">
+            <Text fw={600}>{file.name}</Text>
+            <Text size="sm" c="dimmed">
+              {t('spreadsheets.sheetsCount', { count: formatNumber(file.sheets.length) })}
+            </Text>
+          </Stack>
+          <Button
             type="button"
-            className="sz-file-btn"
+            variant="light"
             onClick={() => document.getElementById(inputId)?.click()}
           >
             {t('common.replace')}
-          </button>
+          </Button>
         </div>
       ) : (
-        <label htmlFor={inputId} className="sz-drop-zone-label">
+        <label htmlFor={inputId} className="upload-drop-zone-empty">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
             <rect x="3" y="3" width="18" height="18" rx="2" />
             <line x1="3" y1="9" x2="21" y2="9" />
             <line x1="3" y1="15" x2="21" y2="15" />
             <line x1="9" y1="3" x2="9" y2="21" />
           </svg>
-          <div className="sz-drop-zone-title">{label}</div>
-          <div className="sz-drop-zone-hint">{t('spreadsheets.dropHint')}</div>
+          <Text fw={600}>{label}</Text>
+          <Text c="dimmed">{t('spreadsheets.dropHint')}</Text>
+          <Button component="span" variant="light" leftSection={<IconUpload size={16} stroke={1.8} />}>
+            {t('common.openFile')}
+          </Button>
         </label>
       )}
-      {error && <div className="sz-drop-zone-error">{error}</div>}
+      {error && <Text size="sm" c="red">{error}</Text>}
     </div>
   )
 }
@@ -262,18 +288,17 @@ function SheetSelector({
   const { t, formatNumber } = useI18n()
   return (
     <div className="sheet-selector">
-      <span className="sheet-selector-label">{side === 'left' ? t('spreadsheets.leftSheet') : t('spreadsheets.rightSheet')}</span>
-      <select
+      <Text size="sm" fw={600} mb={8}>
+        {side === 'left' ? t('spreadsheets.leftSheet') : t('spreadsheets.rightSheet')}
+      </Text>
+      <Select
         value={selected}
-        onChange={(e) => onSelect(e.target.value)}
-        className="sheet-select"
-      >
-        {sheets.map((s) => (
-          <option key={s.name} value={s.name}>
-            {s.name} ({t('spreadsheets.rowsCount', { count: formatNumber(s.rows.length) })})
-          </option>
-        ))}
-      </select>
+        onChange={(value) => value && onSelect(value)}
+        data={sheets.map((sheet) => ({
+          value: sheet.name,
+          label: `${sheet.name} (${t('spreadsheets.rowsCount', { count: formatNumber(sheet.rows.length) })})`,
+        }))}
+      />
     </div>
   )
 }
@@ -301,13 +326,13 @@ function DiffTable({ diff }: { diff: SheetDiff }) {
 
   return (
     <div className="diff-table-wrapper">
-      <div className="diff-summary">
-        <span className="stat same">{t('spreadsheets.sameCount', { count: formatNumber(stats.same) })}</span>
-        <span className="stat changed">{t('spreadsheets.changedCount', { count: formatNumber(stats.changed) })}</span>
-        <span className="stat added-left">{t('spreadsheets.onlyLeftCount', { count: formatNumber(stats.addedLeft) })}</span>
-        <span className="stat added-right">{t('spreadsheets.onlyRightCount', { count: formatNumber(stats.addedRight) })}</span>
-        <span className="stat total">{t('spreadsheets.totalCellsCount', { count: formatNumber(stats.total) })}</span>
-      </div>
+      <Group gap="xs" wrap="wrap" className="diff-summary">
+        <StatBadge>{t('spreadsheets.sameCount', { count: formatNumber(stats.same) })}</StatBadge>
+        <StatBadge tone="changed">{t('spreadsheets.changedCount', { count: formatNumber(stats.changed) })}</StatBadge>
+        <StatBadge tone="removed">{t('spreadsheets.onlyLeftCount', { count: formatNumber(stats.addedLeft) })}</StatBadge>
+        <StatBadge tone="added">{t('spreadsheets.onlyRightCount', { count: formatNumber(stats.addedRight) })}</StatBadge>
+        <StatBadge>{t('spreadsheets.totalCellsCount', { count: formatNumber(stats.total) })}</StatBadge>
+      </Group>
       <div className="diff-table-scroll">
         <table className="diff-table">
           <thead>
@@ -438,58 +463,87 @@ export function SpreadsheetComparePage() {
   }, [setSpreadsheetSession])
 
   return (
-    <div className="spreadsheet-page">
-      <div className="page-header">
-        <h1>{t('spreadsheets.title')}</h1>
-      </div>
+    <section className="spreadsheet-page">
+      <Stack gap="lg">
+        <PageHero
+          title={t('spreadsheets.title')}
+          description={t('spreadsheets.description')}
+          icon={<IconFileSpreadsheet size={26} stroke={1.8} />}
+        />
 
-      <div className="compare-panels">
-        <DropZone inputId="spreadsheet-left-file" label={t('spreadsheets.leftFile')} file={leftFile} onFile={handleLeftFile} />
-        <div className="panel-actions">
-          <button type="button" className="action-btn swap-btn" onClick={swap} disabled={!leftFile || !rightFile} title={t('spreadsheets.swapTitle')}>
-            ⇄
-          </button>
-          <button type="button" className="action-btn clear-btn" onClick={clear} disabled={!leftFile && !rightFile} title={t('spreadsheets.clearTitle')}>
-            ✕
-          </button>
-        </div>
-        <DropZone inputId="spreadsheet-right-file" label={t('spreadsheets.rightFile')} file={rightFile} onFile={handleRightFile} />
-      </div>
+        <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+          <SurfaceCard title={t('spreadsheets.leftFile')} className="upload-surface">
+            <DropZone inputId="spreadsheet-left-file" label={t('spreadsheets.leftFile')} file={leftFile} onFile={handleLeftFile} />
+          </SurfaceCard>
+          <SurfaceCard title={t('spreadsheets.rightFile')} className="upload-surface">
+            <DropZone inputId="spreadsheet-right-file" label={t('spreadsheets.rightFile')} file={rightFile} onFile={handleRightFile} />
+          </SurfaceCard>
+        </SimpleGrid>
 
-      {leftFile && rightFile && (
-        <div className="sheet-selectors">
-          <SheetSelector sheets={leftFile.sheets} selected={leftSheet} side="left" onSelect={handleLeftSheet} />
-          <SheetSelector sheets={rightFile.sheets} selected={rightSheet} side="right" onSelect={handleRightSheet} />
-        </div>
-      )}
+        <SurfaceCard
+          title={t('common.comparing')}
+          description={
+            diff
+              ? t('spreadsheets.comparingSheets', { left: diff.leftSheet, right: diff.rightSheet })
+              : t('spreadsheets.selectSheets')
+          }
+          headerAside={(
+            <Group gap="xs">
+              <ActionIcon
+                type="button"
+                size="lg"
+                variant="light"
+                onClick={swap}
+                disabled={!leftFile || !rightFile}
+                title={t('spreadsheets.swapTitle')}
+              >
+                <IconArrowsLeftRight size={18} stroke={1.8} />
+              </ActionIcon>
+              <ActionIcon
+                type="button"
+                size="lg"
+                variant="default"
+                onClick={clear}
+                disabled={!leftFile && !rightFile}
+                title={t('spreadsheets.clearTitle')}
+              >
+                <IconTrash size={18} stroke={1.8} />
+              </ActionIcon>
+            </Group>
+          )}
+        >
+          {leftFile && rightFile && (
+            <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+              <SheetSelector sheets={leftFile.sheets} selected={leftSheet} side="left" onSelect={handleLeftSheet} />
+              <SheetSelector sheets={rightFile.sheets} selected={rightSheet} side="right" onSelect={handleRightSheet} />
+            </SimpleGrid>
+          )}
+        </SurfaceCard>
 
-      {diff && (
-        <>
-          <div className="diff-header">
-            <span className="diff-title">
-              {t('spreadsheets.comparingSheets', { left: diff.leftSheet, right: diff.rightSheet })}
-            </span>
-          </div>
-          <DiffTable diff={diff} />
-        </>
-      )}
+        {diff && (
+          <SurfaceCard
+            title={t('spreadsheets.comparingSheets', { left: diff.leftSheet, right: diff.rightSheet })}
+            padded={false}
+            className="table-surface"
+          >
+            <DiffTable diff={diff} />
+          </SurfaceCard>
+        )}
 
-      {!diff && leftFile && rightFile && (
-        <div className="no-diff-hint">{t('spreadsheets.selectSheets')}</div>
-      )}
+        {!diff && leftFile && rightFile && (
+          <SurfaceCard>
+            <Text c="dimmed">{t('spreadsheets.selectSheets')}</Text>
+          </SurfaceCard>
+        )}
 
-      {!leftFile && !rightFile && (
-        <div className="empty-state">
-          <svg className="empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <line x1="3" y1="9" x2="21" y2="9" />
-            <line x1="3" y1="15" x2="21" y2="15" />
-            <line x1="9" y1="3" x2="9" y2="21" />
-          </svg>
-          <div className="empty-title">{t('spreadsheets.noFiles')}</div>
-          <div className="empty-desc">{t('spreadsheets.emptyDescription')}</div>
-        </div>
-      )}
-    </div>
+        {!leftFile && !rightFile && (
+          <EmptyState
+            icon={<IconFileSpreadsheet size={28} stroke={1.8} />}
+            title={t('spreadsheets.noFiles')}
+            description={t('spreadsheets.emptyDescription')}
+          />
+        )}
+      </Stack>
+    </section>
   )
 }

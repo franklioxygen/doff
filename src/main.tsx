@@ -9,7 +9,11 @@ import '@fontsource/ibm-plex-sans/500.css'
 import '@fontsource/ibm-plex-sans/600.css'
 import '@fontsource/ibm-plex-mono/400.css'
 import '@fontsource/ibm-plex-mono/500.css'
+import '@fontsource/space-grotesk/500.css'
+import '@fontsource/space-grotesk/700.css'
+import '@mantine/core/styles.css'
 import { router } from './app/router'
+import { AppProviders } from './app/AppProviders'
 import { useSessionStore } from './store/sessionStore'
 import { getPreferredLocale, resolveSupportedLocale } from './i18n/config'
 import './styles/index.css'
@@ -66,6 +70,8 @@ useSessionStore.subscribe((state) => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <AppProviders>
+      <RouterProvider router={router} />
+    </AppProviders>
   </StrictMode>,
 )

@@ -1,4 +1,30 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Code,
+  Group,
+  Select,
+  SegmentedControl,
+  SimpleGrid,
+  Stack,
+  Text,
+} from '@mantine/core'
+import {
+  IconAlertCircle,
+  IconArrowsLeftRight,
+  IconCode,
+  IconCopy,
+  IconDownload,
+  IconFileArrowLeft,
+  IconFileArrowRight,
+  IconFileTypeZip,
+  IconSparkles,
+  IconTextPlus,
+  IconTrash,
+  IconUpload,
+} from '@tabler/icons-react'
 import Editor, { loader, useMonaco } from '@monaco-editor/react'
 import type { OnMount } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
@@ -12,6 +38,9 @@ import { exportDiffHtml, loadDoffBundle, saveDoffBundle } from './exporters'
 import { useSessionStore } from '../../store/sessionStore'
 import { useI18n } from '../../i18n'
 import { TEXT_LANGUAGES } from './languages'
+import { PageHero } from '../../components/ui/PageHero'
+import { StatBadge } from '../../components/ui/StatBadge'
+import { SurfaceCard } from '../../components/ui/SurfaceCard'
 
 // Use local monaco-editor instead of CDN — eliminates loader.js.map 404 and unhandled rejections
 window.MonacoEnvironment = {
@@ -109,7 +138,9 @@ export function TextPage() {
   const [editorsReady, setEditorsReady] = useState(0)
   const [singleEditorReady, setSingleEditorReady] = useState(0)
   const [onlyShowDiffs, setOnlyShowDiffs] = useState(false)
-  const [showDiffInSingleInput, setShowDiffInSingleInput] = useState(false)
+  const [showDiffInSingleInput, setShowDiffInSingleInput] = useState(
+    session.options.viewMode === 'unified',
+  )
 
   useEffect(() => {
     if (session.options.realTime) {
@@ -120,6 +151,10 @@ export function TextPage() {
       })
     }
   }, [session.leftText, session.rightText, session.options])
+
+  useEffect(() => {
+    setShowDiffInSingleInput(session.options.viewMode === 'unified')
+  }, [session.options.viewMode])
 
   const source = session.options.realTime
     ? { leftText: session.leftText, rightText: session.rightText, options: session.options }
@@ -486,245 +521,426 @@ export function TextPage() {
 
   return (
     <section className="text-page">
-      <div className="page-header">
-        <h1>{t('text.title')}</h1>
-        <div className="stat-pills">
-          <span className="pill pill-added">{t('text.addedCount', { count: formatNumber(diffResult.stats.added) })}</span>
-          <span className="pill pill-removed">{t('text.removedCount', { count: formatNumber(diffResult.stats.removed) })}</span>
-          <span className="pill pill-changed">{t('text.changedCount', { count: formatNumber(diffResult.stats.changed) })}</span>
-        </div>
-      </div>
-
-      <div
-        className="editor-grid"
-        style={showDiffInSingleInput ? { display: 'none' } : undefined}
-        aria-hidden={showDiffInSingleInput}
-      >
-        <section
-          className="editor-pane"
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={(event) => {
-            void handleDrop(event, 'left').catch(() => {})
-          }}
-        >
-          <header className="pane-header">
-            <strong>{t('text.leftInput')}</strong>
-            <div className="pane-actions">
-              <button type="button" onClick={() => leftFileInputRef.current?.click()} aria-label={t('text.openFileLeftAria')}>
-                {t('common.openFile')}
-              </button>
-              <button type="button" onClick={() => void handlePasteFromClipboard('left')} aria-label={t('text.pasteLeftAria')}>
-                {t('text.pasteText')}
-              </button>
-              <button type="button" onClick={() => void handleCopyPane('left')} aria-label={t('text.copyLeftAria')}>
-                {t('text.copyLeft')}
-              </button>
-            </div>
-          </header>
-          <Editor
-            key={`left-${onlyShowDiffs ? 'diff' : 'source'}`}
-            height="300px"
-            theme={theme === 'dark' ? 'vs-dark' : 'light'}
-            language={session.options.language}
-            value={onlyShowDiffs ? aligned.leftText : session.leftText}
-            options={editorOptions}
-            onMount={handleLeftMount}
-            onChange={(value) => {
-              if (onlyShowDiffs) return
-              const v = value ?? ''
-              if (v.length - prevLeftLen.current > 10) {
-                autoDetect(v)
-              }
-              prevLeftLen.current = v.length
-              setLeftText(v)
-            }}
-          />
-          <input
-            ref={leftFileInputRef}
-            type="file"
-            hidden
-            onChange={(event) => {
-              void handleOpenFile('left', event.target.files?.[0])
-              event.target.value = ''
-            }}
-          />
-        </section>
-
-        <section
-          className="editor-pane"
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={(event) => {
-            void handleDrop(event, 'right').catch(() => {})
-          }}
-        >
-          <header className="pane-header">
-            <strong>{t('text.rightInput')}</strong>
-            <div className="pane-actions">
-              <button type="button" onClick={() => rightFileInputRef.current?.click()} aria-label={t('text.openFileRightAria')}>
-                {t('common.openFile')}
-              </button>
-              <button type="button" onClick={() => void handlePasteFromClipboard('right')} aria-label={t('text.pasteRightAria')}>
-                {t('text.pasteText')}
-              </button>
-              <button type="button" onClick={() => void handleCopyPane('right')} aria-label={t('text.copyRightAria')}>
-                {t('text.copyRight')}
-              </button>
-            </div>
-          </header>
-          <Editor
-            key={`right-${onlyShowDiffs ? 'diff' : 'source'}`}
-            height="300px"
-            theme={theme === 'dark' ? 'vs-dark' : 'light'}
-            language={session.options.language}
-            value={onlyShowDiffs ? aligned.rightText : session.rightText}
-            options={editorOptions}
-            onMount={handleRightMount}
-            onChange={(value) => {
-              if (onlyShowDiffs) return
-              const v = value ?? ''
-              if (v.length - prevRightLen.current > 10) {
-                autoDetect(v)
-              }
-              prevRightLen.current = v.length
-              setRightText(v)
-            }}
-          />
-          <input
-            ref={rightFileInputRef}
-            type="file"
-            hidden
-            onChange={(event) => {
-              void handleOpenFile('right', event.target.files?.[0])
-              event.target.value = ''
-            }}
-          />
-        </section>
-      </div>
-
-      {showDiffInSingleInput && (
-        <section className="editor-pane single-diff-pane">
-          <header className="pane-header">
-            <strong>{t('text.diffInput')}</strong>
-            {!unifiedDiffView.text && <span className="change-counter">{t('text.noContent')}</span>}
-          </header>
-          <Editor
-            height="300px"
-            theme={theme === 'dark' ? 'vs-dark' : 'light'}
-            language="plaintext"
-            value={unifiedDiffView.text}
-            options={singleEditorOptions}
-            onMount={handleSingleMount}
-          />
-        </section>
-      )}
-
-      <div className="toolbar" role="toolbar" aria-label={t('text.diffOptionsAria')}>
-        <div className="toolbar-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={session.options.realTime}
-              onChange={(event) => {
-                setTextOptions({ realTime: event.target.checked })
-              }}
-            />
-            {t('text.realTime')}
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={session.options.disableWrap}
-              onChange={(event) => {
-                setTextOptions({ disableWrap: event.target.checked })
-              }}
-            />
-            {t('text.disableWrap')}
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={onlyShowDiffs}
-              onChange={(event) => {
-                setOnlyShowDiffs(event.target.checked)
-              }}
-            />
-            {t('text.onlyShowDiffs')}
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={showDiffInSingleInput}
-              onChange={(event) => {
-                setShowDiffInSingleInput(event.target.checked)
-              }}
-            />
-            {t('text.showDiffInOneInput')}
-          </label>
-          {!session.options.realTime && (
-            <button type="button" onClick={applyManualCompare}>
-              {t('text.compareNow')}
-            </button>
+      <Stack gap="lg">
+        <PageHero
+          title={t('text.title')}
+          icon={<IconTextPlus size={26} stroke={1.8} />}
+          stats={(
+            <>
+              <StatBadge tone="added">
+                {t('text.addedCount', { count: formatNumber(diffResult.stats.added) })}
+              </StatBadge>
+              <StatBadge tone="removed">
+                {t('text.removedCount', { count: formatNumber(diffResult.stats.removed) })}
+              </StatBadge>
+              <StatBadge tone="changed">
+                {t('text.changedCount', { count: formatNumber(diffResult.stats.changed) })}
+              </StatBadge>
+            </>
           )}
-        </div>
+        />
 
-        <div className="toolbar-group">
-          <label>
-            {t('common.syntax')}
-            <select
-              value={session.options.language}
-              onChange={(event) => {
-                setTextOptions({ language: event.target.value })
-              }}
-            >
-              {TEXT_LANGUAGES.map((language) => (
-                <option key={language} value={language}>
-                  {language}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
+        {!showDiffInSingleInput && (
+          <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg" aria-hidden={showDiffInSingleInput}>
+            <SurfaceCard className="editor-surface" padded={false}>
+              <div
+                className="editor-pane"
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  void handleDrop(event, 'left').catch(() => {})
+                }}
+              >
+                <header className="pane-header">
+                  <div className="pane-title-wrap">
+                    <Text fw={600}>{t('text.leftInput')}</Text>
+                    {session.leftName && <Code>{session.leftName}</Code>}
+                  </div>
+                  <Group gap="xs" className="pane-actions">
+                    <Button
+                      type="button"
+                      size="compact-md"
+                      variant="light"
+                      leftSection={<IconFileArrowLeft size={14} stroke={1.8} />}
+                      onClick={() => leftFileInputRef.current?.click()}
+                      aria-label={t('text.openFileLeftAria')}
+                    >
+                      {t('common.openFile')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="compact-md"
+                      variant="subtle"
+                      leftSection={<IconUpload size={14} stroke={1.8} />}
+                      onClick={() => void handlePasteFromClipboard('left')}
+                      aria-label={t('text.pasteLeftAria')}
+                    >
+                      {t('text.pasteText')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="compact-md"
+                      variant="subtle"
+                      leftSection={<IconCopy size={14} stroke={1.8} />}
+                      onClick={() => void handleCopyPane('left')}
+                      aria-label={t('text.copyLeftAria')}
+                    >
+                      {t('text.copyLeft')}
+                    </Button>
+                  </Group>
+                </header>
+                <div className="editor-host">
+                  <Editor
+                    key={`left-${onlyShowDiffs ? 'diff' : 'source'}`}
+                    height="420px"
+                    theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                    language={session.options.language}
+                    value={onlyShowDiffs ? aligned.leftText : session.leftText}
+                    options={editorOptions}
+                    onMount={handleLeftMount}
+                    onChange={(value) => {
+                      if (onlyShowDiffs) return
+                      const v = value ?? ''
+                      if (v.length - prevLeftLen.current > 10) {
+                        autoDetect(v)
+                      }
+                      prevLeftLen.current = v.length
+                      setLeftText(v)
+                    }}
+                  />
+                </div>
+                <input
+                  ref={leftFileInputRef}
+                  type="file"
+                  hidden
+                  onChange={(event) => {
+                    void handleOpenFile('left', event.target.files?.[0])
+                    event.target.value = ''
+                  }}
+                />
+              </div>
+            </SurfaceCard>
 
-      <div className="action-bar" role="toolbar" aria-label={t('text.actionsAria')}>
-        <div className="toolbar-group">
-          <button type="button" onClick={swapSides} aria-label={t('text.swapInputsAria')}>
-            {t('text.swapInputs')}
-          </button>
-          <button type="button" onClick={handleClearSession} aria-label={t('text.clearSessionAria')}>
-            {t('text.clearSession')}
-          </button>
-          <button type="button" onClick={handleSaveDoff} aria-label={t('text.exportDoffAria')}>
-            {t('text.exportDoff')}
-          </button>
-          <button type="button" onClick={handleExportHtml} aria-label={t('text.exportHtmlAria')}>
-            {t('text.exportHtml')}
-          </button>
-          <button type="button" onClick={() => doffFileInputRef.current?.click()} aria-label={t('text.loadDoffAria')}>
-            {t('text.loadDoff')}
-          </button>
-          <input
-            ref={doffFileInputRef}
-            hidden
-            type="file"
-            accept=".doff,.zip,application/zip"
-            onChange={(event) => {
-              void handleLoadDoff(event.target.files?.[0])
-              event.target.value = ''
-            }}
-          />
-        </div>
-      </div>
+            <SurfaceCard className="editor-surface" padded={false}>
+              <div
+                className="editor-pane"
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  void handleDrop(event, 'right').catch(() => {})
+                }}
+              >
+                <header className="pane-header">
+                  <div className="pane-title-wrap">
+                    <Text fw={600}>{t('text.rightInput')}</Text>
+                    {session.rightName && <Code>{session.rightName}</Code>}
+                  </div>
+                  <Group gap="xs" className="pane-actions">
+                    <Button
+                      type="button"
+                      size="compact-md"
+                      variant="light"
+                      leftSection={<IconFileArrowRight size={14} stroke={1.8} />}
+                      onClick={() => rightFileInputRef.current?.click()}
+                      aria-label={t('text.openFileRightAria')}
+                    >
+                      {t('common.openFile')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="compact-md"
+                      variant="subtle"
+                      leftSection={<IconUpload size={14} stroke={1.8} />}
+                      onClick={() => void handlePasteFromClipboard('right')}
+                      aria-label={t('text.pasteRightAria')}
+                    >
+                      {t('text.pasteText')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="compact-md"
+                      variant="subtle"
+                      leftSection={<IconCopy size={14} stroke={1.8} />}
+                      onClick={() => void handleCopyPane('right')}
+                      aria-label={t('text.copyRightAria')}
+                    >
+                      {t('text.copyRight')}
+                    </Button>
+                  </Group>
+                </header>
+                <div className="editor-host">
+                  <Editor
+                    key={`right-${onlyShowDiffs ? 'diff' : 'source'}`}
+                    height="420px"
+                    theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                    language={session.options.language}
+                    value={onlyShowDiffs ? aligned.rightText : session.rightText}
+                    options={editorOptions}
+                    onMount={handleRightMount}
+                    onChange={(value) => {
+                      if (onlyShowDiffs) return
+                      const v = value ?? ''
+                      if (v.length - prevRightLen.current > 10) {
+                        autoDetect(v)
+                      }
+                      prevRightLen.current = v.length
+                      setRightText(v)
+                    }}
+                  />
+                </div>
+                <input
+                  ref={rightFileInputRef}
+                  type="file"
+                  hidden
+                  onChange={(event) => {
+                    void handleOpenFile('right', event.target.files?.[0])
+                    event.target.value = ''
+                  }}
+                />
+              </div>
+            </SurfaceCard>
+          </SimpleGrid>
+        )}
 
-      {(busyMessage || errorMessage) && (
-        <div
-          className="status-bar"
-          role={errorMessage ? 'alert' : 'status'}
-          aria-live={errorMessage ? 'polite' : undefined}
-        >
-          {busyMessage ?? errorMessage}
-        </div>
-      )}
+        {showDiffInSingleInput && (
+          <SurfaceCard className="editor-surface" padded={false}>
+            <section className="editor-pane single-diff-pane">
+              <header className="pane-header">
+                <div className="pane-title-wrap">
+                  <Text fw={600}>{t('text.diffInput')}</Text>
+                  {!unifiedDiffView.text && <Code>{t('text.noContent')}</Code>}
+                </div>
+              </header>
+              <div className="editor-host">
+                <Editor
+                  height="420px"
+                  theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                  language="plaintext"
+                  value={unifiedDiffView.text}
+                  options={singleEditorOptions}
+                  onMount={handleSingleMount}
+                />
+              </div>
+            </section>
+          </SurfaceCard>
+        )}
+
+        <SimpleGrid cols={{ base: 1, xl: 3 }} spacing="lg">
+          <SurfaceCard
+            title={t('text.diffOptionsAria')}
+            description={session.options.realTime ? undefined : t('text.compareNow')}
+            className="control-surface"
+          >
+            <Stack gap="md">
+              <div>
+                <Text size="sm" fw={600} mb={8}>
+                  {t('common.syntax')}
+                </Text>
+                <Select
+                  searchable
+                  value={session.options.language}
+                  data={TEXT_LANGUAGES.map((language) => ({ label: language, value: language }))}
+                  onChange={(value) => {
+                    if (value) {
+                      setTextOptions({ language: value })
+                    }
+                  }}
+                />
+              </div>
+              <div>
+                <Text size="sm" fw={600} mb={8}>
+                  {t('settings.defaultViewMode')}
+                </Text>
+                <SegmentedControl
+                  fullWidth
+                  value={showDiffInSingleInput ? 'unified' : 'split'}
+                  onChange={(value) => {
+                    const nextMode = value as 'split' | 'unified'
+                    setTextOptions({ viewMode: nextMode })
+                    setShowDiffInSingleInput(nextMode === 'unified')
+                  }}
+                  data={[
+                    { label: t('common.split'), value: 'split' },
+                    { label: t('common.unified'), value: 'unified' },
+                  ]}
+                />
+              </div>
+              <div>
+                <Text size="sm" fw={600} mb={8}>
+                  {t('settings.defaultPrecision')}
+                </Text>
+                <SegmentedControl
+                  fullWidth
+                  value={session.options.precision}
+                  onChange={(value) => {
+                    setTextOptions({ precision: value as 'word' | 'character' })
+                  }}
+                  data={[
+                    { label: t('common.word'), value: 'word' },
+                    { label: t('common.character'), value: 'character' },
+                  ]}
+                />
+              </div>
+              <Checkbox
+                checked={session.options.realTime}
+                label={t('text.realTime')}
+                onChange={(event) => {
+                  setTextOptions({ realTime: event.currentTarget.checked })
+                }}
+              />
+              <Checkbox
+                checked={session.options.disableWrap}
+                label={t('text.disableWrap')}
+                onChange={(event) => {
+                  setTextOptions({ disableWrap: event.currentTarget.checked })
+                }}
+              />
+              <Checkbox
+                checked={onlyShowDiffs}
+                label={t('text.onlyShowDiffs')}
+                onChange={(event) => {
+                  setOnlyShowDiffs(event.currentTarget.checked)
+                }}
+              />
+              {!session.options.realTime && (
+                <Button
+                  type="button"
+                  variant="light"
+                  leftSection={<IconSparkles size={16} stroke={1.8} />}
+                  onClick={applyManualCompare}
+                >
+                  {t('text.compareNow')}
+                </Button>
+              )}
+            </Stack>
+          </SurfaceCard>
+
+          <SurfaceCard
+            title={t('settings.textDefaultsTitle')}
+            description={t('settings.textDefaultsDescription')}
+            className="control-surface"
+          >
+            <Stack gap="sm">
+              <Checkbox
+                checked={session.options.ignoreLeadingTrailingWhitespace}
+                label={t('settings.ignoreLeadingTrailingWhitespace')}
+                onChange={(event) => {
+                  setTextOptions({ ignoreLeadingTrailingWhitespace: event.currentTarget.checked })
+                }}
+              />
+              <Checkbox
+                checked={session.options.ignoreAllWhitespace}
+                label={t('settings.ignoreAllWhitespace')}
+                onChange={(event) => {
+                  setTextOptions({ ignoreAllWhitespace: event.currentTarget.checked })
+                }}
+              />
+              <Checkbox
+                checked={session.options.ignoreCase}
+                label={t('settings.ignoreCase')}
+                onChange={(event) => {
+                  setTextOptions({ ignoreCase: event.currentTarget.checked })
+                }}
+              />
+              <Checkbox
+                checked={session.options.ignoreBlankLines}
+                label={t('settings.ignoreBlankLines')}
+                onChange={(event) => {
+                  setTextOptions({ ignoreBlankLines: event.currentTarget.checked })
+                }}
+              />
+              <Checkbox
+                checked={session.options.trimTrailingWhitespace}
+                label={t('settings.trimTrailingWhitespace')}
+                onChange={(event) => {
+                  setTextOptions({ trimTrailingWhitespace: event.currentTarget.checked })
+                }}
+              />
+              <Checkbox
+                checked={session.options.normalizeUnicode}
+                label={t('settings.normalizeUnicode')}
+                onChange={(event) => {
+                  setTextOptions({ normalizeUnicode: event.currentTarget.checked })
+                }}
+              />
+            </Stack>
+          </SurfaceCard>
+
+          <SurfaceCard
+            title={t('text.actionsAria')}
+            description={busyMessage ?? errorMessage ?? undefined}
+            className="control-surface"
+          >
+            <Stack gap="sm">
+              <Button
+                type="button"
+                variant="light"
+                leftSection={<IconArrowsLeftRight size={16} stroke={1.8} />}
+                onClick={swapSides}
+                aria-label={t('text.swapInputsAria')}
+              >
+                {t('text.swapInputs')}
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                leftSection={<IconTrash size={16} stroke={1.8} />}
+                onClick={handleClearSession}
+                aria-label={t('text.clearSessionAria')}
+              >
+                {t('text.clearSession')}
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                leftSection={<IconFileTypeZip size={16} stroke={1.8} />}
+                onClick={handleSaveDoff}
+                aria-label={t('text.exportDoffAria')}
+              >
+                {t('text.exportDoff')}
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                leftSection={<IconDownload size={16} stroke={1.8} />}
+                onClick={handleExportHtml}
+                aria-label={t('text.exportHtmlAria')}
+              >
+                {t('text.exportHtml')}
+              </Button>
+              <Button
+                type="button"
+                variant="light"
+                leftSection={<IconCode size={16} stroke={1.8} />}
+                onClick={() => doffFileInputRef.current?.click()}
+                aria-label={t('text.loadDoffAria')}
+              >
+                {t('text.loadDoff')}
+              </Button>
+              <input
+                ref={doffFileInputRef}
+                hidden
+                type="file"
+                accept=".doff,.zip,application/zip"
+                onChange={(event) => {
+                  void handleLoadDoff(event.target.files?.[0])
+                  event.target.value = ''
+                }}
+              />
+            </Stack>
+          </SurfaceCard>
+        </SimpleGrid>
+
+        {(busyMessage || errorMessage) && (
+          <Alert
+            color={errorMessage ? 'ember' : 'moss'}
+            icon={<IconAlertCircle size={18} stroke={1.8} />}
+            title={errorMessage ? 'Error' : 'Status'}
+            role={errorMessage ? 'alert' : 'status'}
+            aria-live={errorMessage ? 'polite' : undefined}
+          >
+            {busyMessage ?? errorMessage}
+          </Alert>
+        )}
+      </Stack>
     </section>
   )
 }

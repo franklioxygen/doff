@@ -1,4 +1,8 @@
+import { SimpleGrid } from '@mantine/core'
+import { IconShieldLock } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
+import { PageHero } from '../../components/ui/PageHero'
+import { SurfaceCard } from '../../components/ui/SurfaceCard'
 
 export function AboutPrivacyPage() {
   const { t } = useI18n()
@@ -28,21 +32,19 @@ export function AboutPrivacyPage() {
 
   return (
     <section className="about-page">
-      <header className="page-header">
-        <div>
-          <h1>{t('about.title')}</h1>
-          <p>{t('about.description')}</p>
-        </div>
-      </header>
+      <PageHero
+        title={t('about.title')}
+        description={t('about.description')}
+        icon={<IconShieldLock size={26} stroke={1.8} />}
+      />
 
-      <div className="about-grid">
+      <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg" mt="lg">
         {sections.map((section) => (
-          <article key={section.title} className="settings-card">
-            <h2>{section.title}</h2>
-            <p>{section.body}</p>
-          </article>
+          <SurfaceCard key={section.title} title={section.title} className="about-card">
+            {section.body}
+          </SurfaceCard>
         ))}
-      </div>
+      </SimpleGrid>
     </section>
   )
 }

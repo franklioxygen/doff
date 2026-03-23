@@ -5,10 +5,32 @@ import {
   useState,
 } from 'react'
 import type { MouseEvent } from 'react'
+import {
+  Button,
+  Group,
+  Image,
+  SegmentedControl,
+  SimpleGrid,
+  Slider,
+  Stack,
+  Text,
+} from '@mantine/core'
+import {
+  IconArrowsLeftRight,
+  IconLayersIntersect,
+  IconPhotoSpark,
+  IconRefresh,
+  IconTrash,
+  IconUpload,
+} from '@tabler/icons-react'
 import { useSessionStore } from '../../store/sessionStore'
 import type { ImageInfo, ImageCompareMode } from '../../store/sessionStore'
 import { useI18n } from '../../i18n'
 import pixelmatch from 'pixelmatch'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { PageHero } from '../../components/ui/PageHero'
+import { StatBadge } from '../../components/ui/StatBadge'
+import { SurfaceCard } from '../../components/ui/SurfaceCard'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -93,32 +115,35 @@ const DropZone = ({ label, image, onFile, side }: DropZoneProps) => {
   )
 
   return (
-    <div className={`drop-zone ${dragging ? 'drop-zone-active' : ''} ${image ? 'drop-zone-filled' : ''}`}>
+    <div className={`upload-drop-zone ${dragging ? 'upload-drop-zone-active' : ''} ${image ? 'upload-drop-zone-filled' : ''}`}>
       {image ? (
-        <div className="dz-preview">
-          <img
+        <div className="upload-preview">
+          <Image
             src={image.dataUrl}
             alt={side === 'left' ? t('images.leftPreviewAlt') : t('images.rightPreviewAlt')}
-            className="dz-thumb"
+            className="upload-preview-thumb"
+            radius="lg"
+            h={120}
+            fit="cover"
           />
-          <div className="dz-info">
-            <span className="dz-name">{image.name}</span>
-            <span className="dz-meta">
+          <Stack gap={2} className="upload-preview-info">
+            <Text fw={600}>{image.name}</Text>
+            <Text size="sm" c="dimmed">
               {image.width}×{image.height} · {formatBytes(image.size)}
-            </span>
-          </div>
-          <div className="dz-actions">
-            <button type="button" onClick={() => inputRef.current?.click()}>
+            </Text>
+          </Stack>
+          <Group gap="xs" className="upload-preview-actions">
+            <Button type="button" variant="light" onClick={() => inputRef.current?.click()}>
               {t('common.replace')}
-            </button>
-            <button type="button" onClick={() => onFile(null)}>
+            </Button>
+            <Button type="button" variant="default" onClick={() => onFile(null)}>
               {t('common.clear')}
-            </button>
-          </div>
+            </Button>
+          </Group>
         </div>
       ) : (
         <div
-          className="dz-empty"
+          className="upload-drop-zone-empty"
           onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
@@ -133,14 +158,17 @@ const DropZone = ({ label, image, onFile, side }: DropZoneProps) => {
             <circle cx="8.5" cy="8.5" r="1.5" />
             <polyline points="21 15 16 10 5 21" />
           </svg>
-          <p>{t('images.dropHere')}</p>
-          <span>{t('images.orClickBrowse')}</span>
-          <button
+          <Text fw={600}>{label}</Text>
+          <Text c="dimmed">{t('images.dropHere')}</Text>
+          <Text size="sm" c="dimmed">{t('images.orClickBrowse')}</Text>
+          <Button
             type="button"
+            variant="light"
+            leftSection={<IconUpload size={16} stroke={1.8} />}
             onClick={(e) => { e.stopPropagation(); inputRef.current?.click() }}
           >
             {t('common.openFile')}
-          </button>
+          </Button>
         </div>
       )}
       <input
@@ -442,7 +470,7 @@ export function ImageComparePage() {
   const clearImageSession = useSessionStore((s) => s.clearImageSession)
   const { t, formatNumber } = useI18n()
 
-  const [diffPct, setDiffPct] = useState<number | null>(null)
+  const [diffPct, setDiffPct] = useState<number | null>(imageSession.diffPercent)
   const [computing, setComputing] = useState(false)
   const [transform, setTransform] = useState(DEFAULT_TRANSFORM)
 
@@ -517,113 +545,159 @@ export function ImageComparePage() {
   const handleResetZoom = () => setTransform(DEFAULT_TRANSFORM)
 
   return (
-    <div className="image-page">
-      <div className="page-header">
-        <h1>{t('images.title')}</h1>
-        <div className="stat-pills">
-          {diffPct !== null && (
-            <span className="pill pill-changed">
-              {t('images.diffPixels', {
-                value: formatNumber(diffPct, {
-                  minimumFractionDigits: 1,
-                  maximumFractionDigits: 1,
-                }),
-              })}
-            </span>
-          )}
-          {computing && <span className="pill">{t('images.computingDiff')}</span>}
-          {bothLoaded && (
+    <section className="image-page">
+      <Stack gap="lg">
+        <PageHero
+          title={t('images.title')}
+          icon={<IconPhotoSpark size={26} stroke={1.8} />}
+          stats={(
             <>
-              <span className="pill">
-                {t('images.leftDimensions', { dimensions: `${leftImage!.width}×${leftImage!.height}` })}
-              </span>
-              <span className="pill">
-                {t('images.rightDimensions', { dimensions: `${rightImage!.width}×${rightImage!.height}` })}
-              </span>
-              <span className="pill">
-                {formatBytes(leftImage!.size)} · {formatBytes(rightImage!.size)}
-              </span>
+              {diffPct !== null && (
+                <StatBadge tone="changed">
+                  {t('images.diffPixels', {
+                    value: formatNumber(diffPct, {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    }),
+                  })}
+                </StatBadge>
+              )}
+              {computing && <StatBadge>{t('images.computingDiff')}</StatBadge>}
+              {bothLoaded && (
+                <>
+                  <StatBadge>
+                    {t('images.leftDimensions', { dimensions: `${leftImage!.width}×${leftImage!.height}` })}
+                  </StatBadge>
+                  <StatBadge>
+                    {t('images.rightDimensions', { dimensions: `${rightImage!.width}×${rightImage!.height}` })}
+                  </StatBadge>
+                  <StatBadge>
+                    {formatBytes(leftImage!.size)} · {formatBytes(rightImage!.size)}
+                  </StatBadge>
+                </>
+              )}
             </>
           )}
-        </div>
-      </div>
-
-      {/* Drop zones */}
-      <div className="image-dropzones">
-        <DropZone
-          label={t('images.leftImage')}
-          image={leftImage}
-          onFile={(f) => handleFile('left', f)}
-          side="left"
         />
-        <DropZone
-          label={t('images.rightImage')}
-          image={rightImage}
-          onFile={(f) => handleFile('right', f)}
-          side="right"
-        />
-      </div>
 
-      {/* Toolbar */}
-      <div className="toolbar">
-        <div className="toolbar-group">
-          <span style={{ fontWeight: 500, marginRight: 4 }}>{t('common.mode')}:</span>
-          {modes.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              className={mode === m.id ? 'mode-active' : ''}
-              onClick={() => setImageSession({ mode: m.id })}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-        <div className="toolbar-group">
-          {bothLoaded && mode !== 'diff' && (
-            <button type="button" onClick={() => setImageSession({ mode: 'diff' })}>
-              {t('images.computeDiffPercent')}
-            </button>
+        <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+          <SurfaceCard title={t('images.leftImage')} className="upload-surface">
+            <DropZone
+              label={t('images.leftImage')}
+              image={leftImage}
+              onFile={(f) => handleFile('left', f)}
+              side="left"
+            />
+          </SurfaceCard>
+          <SurfaceCard title={t('images.rightImage')} className="upload-surface">
+            <DropZone
+              label={t('images.rightImage')}
+              image={rightImage}
+              onFile={(f) => handleFile('right', f)}
+              side="right"
+            />
+          </SurfaceCard>
+        </SimpleGrid>
+
+        <SurfaceCard
+          title={t('common.mode')}
+          description={bothLoaded ? t('images.scrollZoomPan') : t('images.loadTwoImages')}
+          headerAside={(
+            <Group gap="xs">
+              <Button
+                type="button"
+                variant="light"
+                leftSection={<IconRefresh size={16} stroke={1.8} />}
+                onClick={handleResetZoom}
+              >
+                {t('images.resetZoom')}
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                leftSection={<IconTrash size={16} stroke={1.8} />}
+                onClick={handleClearSession}
+              >
+                {t('images.clearSession')}
+              </Button>
+            </Group>
           )}
-          <button type="button" onClick={handleResetZoom}>{t('images.resetZoom')}</button>
-          <button type="button" onClick={handleClearSession}>{t('images.clearSession')}</button>
-        </div>
-      </div>
+        >
+          <Stack gap="md">
+            <SegmentedControl
+              fullWidth
+              value={mode}
+              onChange={(value) => setImageSession({ mode: value as ImageCompareMode })}
+              data={modes.map((item) => ({ label: item.label, value: item.id }))}
+            />
+            {bothLoaded && mode !== 'diff' && (
+              <div className="slider-control">
+                <Group justify="space-between" align="center" wrap="nowrap" mb={8} className="slider-meta">
+                  <Text size="sm" fw={600} className="slider-label">
+                    {t('images.slider')}
+                  </Text>
+                  <Text size="sm" c="dimmed" className="slider-value">
+                    {formatNumber(sliderPosition)}%
+                  </Text>
+                </Group>
+                <Slider
+                  min={0}
+                  max={100}
+                  value={sliderPosition}
+                  onChange={(value) => setImageSession({ sliderPosition: value })}
+                />
+              </div>
+            )}
+            {bothLoaded && mode !== 'diff' && (
+              <Button
+                type="button"
+                variant="subtle"
+                leftSection={<IconLayersIntersect size={16} stroke={1.8} />}
+                onClick={() => setImageSession({ mode: 'diff' })}
+              >
+                {t('images.computeDiffPercent')}
+              </Button>
+            )}
+          </Stack>
+        </SurfaceCard>
 
-      {/* Viewer area */}
-      <div className="image-viewer-area">
-        {!bothLoaded && (
-          <div className="viewer-placeholder">
-            <p>{t('images.loadTwoImages')}</p>
+        <SurfaceCard title={modes.find((entry) => entry.id === mode)?.label ?? t('common.mode')} padded={false}>
+          <div className="image-viewer-area">
+            {!bothLoaded && (
+              <div className="viewer-placeholder">
+                <EmptyState
+                  icon={<IconArrowsLeftRight size={28} stroke={1.8} />}
+                  title={t('images.title')}
+                  description={t('images.loadTwoImages')}
+                />
+              </div>
+            )}
+            {bothLoaded && mode === 'diff' && (
+              <DiffCanvas left={leftImage} right={rightImage} transform={transform} />
+            )}
+            {bothLoaded && mode !== 'diff' && (
+              <SliderCanvas
+                left={leftImage}
+                right={rightImage}
+                sliderPct={sliderPosition}
+                mode={mode}
+                transform={transform}
+              />
+            )}
           </div>
-        )}
-        {bothLoaded && mode === 'diff' && (
-          <DiffCanvas left={leftImage} right={rightImage} transform={transform} />
-        )}
-        {bothLoaded && mode !== 'diff' && (
-          <SliderCanvas
-            left={leftImage}
-            right={rightImage}
-            sliderPct={sliderPosition}
-            mode={mode}
-            transform={transform}
-          />
-        )}
-      </div>
+        </SurfaceCard>
 
-      {/* Per-image views for side-by-side reference */}
-      {bothLoaded && (
-        <div className="image-side-panels">
-          <div className="side-panel">
-            <h3>{leftImage!.name}</h3>
-            <ViewCanvas image={leftImage} />
-          </div>
-          <div className="side-panel">
-            <h3>{rightImage!.name}</h3>
-            <ViewCanvas image={rightImage} />
-          </div>
-        </div>
-      )}
-    </div>
+        {bothLoaded && (
+          <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+            <SurfaceCard title={leftImage!.name} className="side-panel">
+              <ViewCanvas image={leftImage} />
+            </SurfaceCard>
+            <SurfaceCard title={rightImage!.name} className="side-panel">
+              <ViewCanvas image={rightImage} />
+            </SurfaceCard>
+          </SimpleGrid>
+        )}
+      </Stack>
+    </section>
   )
 }

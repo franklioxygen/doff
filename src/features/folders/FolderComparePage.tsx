@@ -1,7 +1,24 @@
 import { useCallback, useMemo, useState } from 'react'
+import {
+  ActionIcon,
+  Button,
+  Group,
+  Stack,
+  Text,
+} from '@mantine/core'
+import {
+  IconArrowsLeftRight,
+  IconFolderOpen,
+  IconFolders,
+  IconTrash,
+} from '@tabler/icons-react'
 import { computeDiff } from '../text/textDiff'
 import { useSessionStore, type FolderSession } from '../../store/sessionStore'
 import { useI18n } from '../../i18n'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { PageHero } from '../../components/ui/PageHero'
+import { StatBadge } from '../../components/ui/StatBadge'
+import { SurfaceCard } from '../../components/ui/SurfaceCard'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -290,7 +307,7 @@ function FolderPickerZone({
 
   return (
     <div
-      className={`folder-drop-zone ${dragging ? 'dragging' : ''} ${folder ? 'has-folder' : ''}`}
+      className={`upload-drop-zone ${dragging ? 'upload-drop-zone-active' : ''} ${folder ? 'upload-drop-zone-filled' : ''}`}
       onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
       onDragLeave={() => setDragging(false)}
       onDrop={handleDrop}
@@ -306,33 +323,45 @@ function FolderPickerZone({
         id={inputId}
       />
       {folder ? (
-        <div className="folder-loaded">
+        <div className="upload-preview upload-preview-compact">
           <svg className="folder-loaded-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
           </svg>
-          <div className="folder-label">{folder.label}</div>
-          <div className="folder-meta">{t('folders.filesCount', { count: formatNumber(folder.totalFiles) })}</div>
-          <button type="button" className="folder-action-btn" onClick={handleBrowseFolder}>
+          <Stack gap={2} className="upload-preview-info">
+            <Text fw={600}>{folder.label}</Text>
+            <Text size="sm" c="dimmed">
+              {t('folders.filesCount', { count: formatNumber(folder.totalFiles) })}
+            </Text>
+          </Stack>
+          <Button type="button" variant="light" onClick={handleBrowseFolder}>
             {t('folders.changeFolder')}
-          </button>
+          </Button>
         </div>
       ) : (
-        <div className="folder-empty">
+        <div className="upload-drop-zone-empty">
           {loading ? (
-            <span className="folder-loading-icon">{t('folders.reading')}</span>
+            <Text>{t('folders.reading')}</Text>
           ) : (
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
             </svg>
           )}
-          <div className="folder-title">{label}</div>
-          <button type="button" className="folder-browse-btn" onClick={handleBrowseFolder} disabled={loading}>
+          <Text fw={600}>{label}</Text>
+          <Button
+            type="button"
+            variant="light"
+            leftSection={<IconFolderOpen size={16} stroke={1.8} />}
+            onClick={handleBrowseFolder}
+            disabled={loading}
+          >
             {t('folders.pickFolder')}
-          </button>
-          <div className="folder-hint">{t('folders.orDropFolder')}</div>
+          </Button>
+          <Text size="sm" c="dimmed">
+            {t('folders.orDropFolder')}
+          </Text>
         </div>
       )}
-      {error && <div className="folder-error">{error}</div>}
+      {error && <Text size="sm" c="red">{error}</Text>}
     </div>
   )
 }
@@ -386,14 +415,16 @@ function FileList({ diff }: { diff: FolderDiffResult }) {
 
   return (
     <div className="file-list-container">
-      <div className="file-stats">
-        <span className="fstat identical">{t('folders.identicalCount', { count: formatNumber(stats.identical) })}</span>
-        <span className="fstat modified">{t('folders.modifiedCount', { count: formatNumber(stats.modified) })}</span>
-        <span className="fstat added-left">{t('folders.onlyLeftCount', { count: formatNumber(stats.addedLeft) })}</span>
-        <span className="fstat added-right">{t('folders.onlyRightCount', { count: formatNumber(stats.addedRight) })}</span>
-        {stats.sizeDiff > 0 && <span className="fstat size-diff">{t('folders.sizeDiffCount', { count: formatNumber(stats.sizeDiff) })}</span>}
-        <span className="fstat total">{t('folders.totalCount', { count: formatNumber(stats.total) })}</span>
-      </div>
+      <Group gap="xs" wrap="wrap" className="file-stats">
+        <StatBadge>{t('folders.identicalCount', { count: formatNumber(stats.identical) })}</StatBadge>
+        <StatBadge tone="changed">{t('folders.modifiedCount', { count: formatNumber(stats.modified) })}</StatBadge>
+        <StatBadge tone="removed">{t('folders.onlyLeftCount', { count: formatNumber(stats.addedLeft) })}</StatBadge>
+        <StatBadge tone="added">{t('folders.onlyRightCount', { count: formatNumber(stats.addedRight) })}</StatBadge>
+        {stats.sizeDiff > 0 && (
+          <StatBadge tone="changed">{t('folders.sizeDiffCount', { count: formatNumber(stats.sizeDiff) })}</StatBadge>
+        )}
+        <StatBadge>{t('folders.totalCount', { count: formatNumber(stats.total) })}</StatBadge>
+      </Group>
       <div className="file-list">
         {entries.map((entry) => {
           const isExpanded = expanded.has(entry.path)
@@ -526,49 +557,69 @@ export function FolderComparePage() {
   }, [leftFolder, rightFolder])
 
   return (
-    <div className="folder-page">
-      <div className="page-header">
-        <h1>{t('folders.title')}</h1>
-      </div>
+    <section className="folder-page">
+      <Stack gap="lg">
+        <PageHero
+          title={t('folders.title')}
+          description={t('folders.description')}
+          icon={<IconFolders size={26} stroke={1.8} />}
+        />
 
-      <div className="compare-panels">
-        <FolderPickerZone inputId="folder-left-input" label={t('folders.leftFolder')} folder={leftFolder} onFolder={handleLeft} />
-        <div className="panel-actions">
-          <button type="button" className="action-btn" onClick={swap} disabled={!leftFolder || !rightFolder} title={t('folders.swapTitle')}>
-            ⇄
-          </button>
-          <button type="button" className="action-btn" onClick={clear} disabled={!leftFolder && !rightFolder} title={t('folders.clearTitle')}>
-            ✕
-          </button>
+        <div className="compare-panels">
+          <SurfaceCard title={t('folders.leftFolder')} className="upload-surface">
+            <FolderPickerZone inputId="folder-left-input" label={t('folders.leftFolder')} folder={leftFolder} onFolder={handleLeft} />
+          </SurfaceCard>
+          <SurfaceCard title={t('folders.rightFolder')} className="upload-surface">
+            <FolderPickerZone inputId="folder-right-input" label={t('folders.rightFolder')} folder={rightFolder} onFolder={handleRight} />
+          </SurfaceCard>
         </div>
-        <FolderPickerZone inputId="folder-right-input" label={t('folders.rightFolder')} folder={rightFolder} onFolder={handleRight} />
-      </div>
 
-      {diff && (
-        <div className="folder-results">
-          <div className="folder-results-header">
-            <span className="results-title">
-              {t('folders.comparingFolders', {
-                left: leftFolder?.label ?? t('common.left'),
-                right: rightFolder?.label ?? t('common.right'),
-              })}
-            </span>
-          </div>
-          <FileList diff={diff} />
-        </div>
-      )}
+        <SurfaceCard
+          title={t('common.comparing')}
+          description={
+            diff
+              ? t('folders.comparingFolders', {
+                  left: leftFolder?.label ?? t('common.left'),
+                  right: rightFolder?.label ?? t('common.right'),
+                })
+              : t('folders.emptyDescription')
+          }
+          headerAside={(
+            <Group gap="xs">
+              <ActionIcon
+                type="button"
+                size="lg"
+                variant="light"
+                onClick={swap}
+                disabled={!leftFolder || !rightFolder}
+                title={t('folders.swapTitle')}
+              >
+                <IconArrowsLeftRight size={18} stroke={1.8} />
+              </ActionIcon>
+              <ActionIcon
+                type="button"
+                size="lg"
+                variant="default"
+                onClick={clear}
+                disabled={!leftFolder && !rightFolder}
+                title={t('folders.clearTitle')}
+              >
+                <IconTrash size={18} stroke={1.8} />
+              </ActionIcon>
+            </Group>
+          )}
+        >
+          {diff && <FileList diff={diff} />}
+        </SurfaceCard>
 
-      {!leftFolder && !rightFolder && (
-        <div className="empty-state">
-          <svg className="empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-          </svg>
-          <div className="empty-title">{t('folders.noFolders')}</div>
-          <div className="empty-desc">
-            {t('folders.emptyDescription')}
-          </div>
-        </div>
-      )}
-    </div>
+        {!leftFolder && !rightFolder && (
+          <EmptyState
+            icon={<IconFolders size={28} stroke={1.8} />}
+            title={t('folders.noFolders')}
+            description={t('folders.emptyDescription')}
+          />
+        )}
+      </Stack>
+    </section>
   )
 }

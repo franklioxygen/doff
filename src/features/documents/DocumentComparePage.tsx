@@ -1,10 +1,27 @@
 import { useCallback, useRef, useState } from 'react'
+import {
+  Button,
+  Grid,
+  Group,
+  Image,
+  Stack,
+  Text,
+} from '@mantine/core'
+import {
+  IconFileDescription,
+  IconTrash,
+  IconUpload,
+} from '@tabler/icons-react'
 import { useSessionStore } from '../../store/sessionStore'
 import { computeDiff } from '../text/textDiff'
 import type { PdfPage, PdfDocInfo } from '../../store/sessionStore'
 import { useI18n } from '../../i18n'
 import * as pdfjsLib from 'pdfjs-dist'
 import type { TextItem } from 'pdfjs-dist/types/src/display/api'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { PageHero } from '../../components/ui/PageHero'
+import { StatBadge } from '../../components/ui/StatBadge'
+import { SurfaceCard } from '../../components/ui/SurfaceCard'
 
 // Configure worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -70,7 +87,7 @@ const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
       if (!file || file.type !== 'application/pdf') return
       setLoading(true)
       try {
-        onFile(file)
+        await onFile(file)
       } finally {
         setLoading(false)
       }
@@ -79,23 +96,33 @@ const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
   )
 
   return (
-    <div className={`drop-zone ${dragging ? 'drop-zone-active' : ''} ${doc ? 'drop-zone-filled' : ''}`}>
-      {loading && <div className="dz-empty"><p>{t('documents.loadingPdf')}</p></div>}
+    <div className={`upload-drop-zone ${dragging ? 'upload-drop-zone-active' : ''} ${doc ? 'upload-drop-zone-filled' : ''}`}>
+      {loading && (
+        <div className="upload-drop-zone-empty">
+          <Text>{t('documents.loadingPdf')}</Text>
+        </div>
+      )}
       {!loading && doc ? (
-        <div className="dz-preview">
-          <div className="dz-info">
-            <span className="dz-name">{doc.name}</span>
-            <span className="dz-meta">{t('documents.pagesCount', { count: formatNumber(doc.numPages) })}</span>
-          </div>
-          <div className="dz-actions">
-            <button type="button" onClick={() => inputRef.current?.click()}>{t('common.replace')}</button>
-            <button type="button" onClick={onClear}>{t('common.clear')}</button>
-          </div>
+        <div className="upload-preview upload-preview-compact">
+          <Stack gap={2} className="upload-preview-info">
+            <Text fw={600}>{doc.name}</Text>
+            <Text size="sm" c="dimmed">
+              {t('documents.pagesCount', { count: formatNumber(doc.numPages) })}
+            </Text>
+          </Stack>
+          <Group gap="xs" className="upload-preview-actions">
+            <Button type="button" variant="light" onClick={() => inputRef.current?.click()}>
+              {t('common.replace')}
+            </Button>
+            <Button type="button" variant="default" onClick={onClear}>
+              {t('common.clear')}
+            </Button>
+          </Group>
         </div>
       ) : (
         !loading && (
           <div
-            className="dz-empty"
+            className="upload-drop-zone-empty"
             onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
@@ -112,11 +139,17 @@ const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
               <line x1="16" y1="17" x2="8" y2="17" />
               <polyline points="10 9 9 9 8 9" />
             </svg>
-            <p>{t('documents.dropPdfHere')}</p>
-            <span>{t('images.orClickBrowse')}</span>
-            <button type="button" onClick={(e) => { e.stopPropagation(); inputRef.current?.click() }}>
+            <Text fw={600}>{label}</Text>
+            <Text c="dimmed">{t('documents.dropPdfHere')}</Text>
+            <Text size="sm" c="dimmed">{t('images.orClickBrowse')}</Text>
+            <Button
+              type="button"
+              variant="light"
+              leftSection={<IconUpload size={16} stroke={1.8} />}
+              onClick={(e) => { e.stopPropagation(); inputRef.current?.click() }}
+            >
               {t('documents.openPdf')}
-            </button>
+            </Button>
           </div>
         )
       )}
@@ -276,10 +309,11 @@ const DiffView = ({ leftDoc, rightDoc, selectedPage }: DiffViewProps) => {
             })}
           </strong>
           {leftPage?.thumbnail && (
-            <img
+            <Image
               src={leftPage.thumbnail}
               alt={t('documents.leftThumbnailAlt', { page: formatNumber(selectedPage) })}
               className="page-thumb"
+              radius="md"
             />
           )}
         </div>
@@ -291,10 +325,11 @@ const DiffView = ({ leftDoc, rightDoc, selectedPage }: DiffViewProps) => {
             })}
           </strong>
           {rightPage?.thumbnail && (
-            <img
+            <Image
               src={rightPage.thumbnail}
               alt={t('documents.rightThumbnailAlt', { page: formatNumber(selectedPage) })}
               className="page-thumb"
+              radius="md"
             />
           )}
         </div>
@@ -390,73 +425,112 @@ export function DocumentComparePage() {
   const bothLoaded = leftDoc && rightDoc
 
   return (
-    <div className="doc-page">
-      <div className="page-header">
-        <h1>{t('documents.title')}</h1>
-        <div className="stat-pills">
-          {leftDoc && <span className="pill">{t('documents.leftFileSummary', { name: leftDoc.name, pages: formatNumber(leftDoc.numPages) })}</span>}
-          {rightDoc && <span className="pill">{t('documents.rightFileSummary', { name: rightDoc.name, pages: formatNumber(rightDoc.numPages) })}</span>}
-        </div>
-      </div>
-
-      {/* Drop zones */}
-      <div className="image-dropzones">
-        <PdfDropZone
-          label={`${t('common.left')} PDF`}
-          doc={leftDoc}
-          onFile={(f) => handleFile('left', f)}
-          onClear={() => handleClear('left')}
+    <section className="doc-page">
+      <Stack gap="lg">
+        <PageHero
+          title={t('documents.title')}
+          icon={<IconFileDescription size={26} stroke={1.8} />}
+          stats={(
+            <>
+              {leftDoc && (
+                <StatBadge>
+                  {t('documents.leftFileSummary', {
+                    name: leftDoc.name,
+                    pages: formatNumber(leftDoc.numPages),
+                  })}
+                </StatBadge>
+              )}
+              {rightDoc && (
+                <StatBadge>
+                  {t('documents.rightFileSummary', {
+                    name: rightDoc.name,
+                    pages: formatNumber(rightDoc.numPages),
+                  })}
+                </StatBadge>
+              )}
+            </>
+          )}
         />
-        <PdfDropZone
-          label={`${t('common.right')} PDF`}
-          doc={rightDoc}
-          onFile={(f) => handleFile('right', f)}
-          onClear={() => handleClear('right')}
-        />
-      </div>
 
-      {/* Toolbar */}
-      <div className="toolbar">
-        <div className="toolbar-group">
-          {bothLoaded && (
-            <span style={{ color: 'var(--text-subtle)' }}>
-              {t('documents.comparingPageOf', {
+        <Grid gutter="lg">
+          <Grid.Col span={{ base: 12, xl: 6 }}>
+            <SurfaceCard title={`${t('common.left')} PDF`} className="upload-surface">
+              <PdfDropZone
+                label={`${t('common.left')} PDF`}
+                doc={leftDoc}
+                onFile={(f) => handleFile('left', f)}
+                onClear={() => handleClear('left')}
+              />
+            </SurfaceCard>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, xl: 6 }}>
+            <SurfaceCard title={`${t('common.right')} PDF`} className="upload-surface">
+              <PdfDropZone
+                label={`${t('common.right')} PDF`}
+                doc={rightDoc}
+                onFile={(f) => handleFile('right', f)}
+                onClear={() => handleClear('right')}
+              />
+            </SurfaceCard>
+          </Grid.Col>
+        </Grid>
+
+        <SurfaceCard
+          title={bothLoaded ? t('common.comparing') : t('documents.title')}
+          description={bothLoaded
+            ? t('documents.comparingPageOf', {
                 page: formatNumber(selectedPage),
                 total: formatNumber(Math.max(leftDoc.numPages, rightDoc.numPages)),
-              })}
-            </span>
+              })
+            : t('documents.loadTwoPdfs')}
+          headerAside={(
+            <Button
+              type="button"
+              variant="default"
+              leftSection={<IconTrash size={16} stroke={1.8} />}
+              onClick={clearDocumentSession}
+            >
+              {t('documents.clearSession')}
+            </Button>
           )}
-        </div>
-        <div className="toolbar-group">
-          <button type="button" onClick={clearDocumentSession}>{t('documents.clearSession')}</button>
-        </div>
-      </div>
+        >
+          <Text c="dimmed" size="sm">
+            {bothLoaded ? t('documents.loadTwoPdfs') : t('documents.dropPdfHere')}
+          </Text>
+        </SurfaceCard>
 
-      {/* Content */}
-      <div className="doc-content">
-        {/* Page list */}
-        <PageList
-          leftDoc={leftDoc}
-          rightDoc={rightDoc}
-          selectedPage={selectedPage}
-          onSelectPage={(n) => setDocumentSession({ selectedPage: n })}
-        />
-
-        {/* Diff view */}
         {(leftDoc || rightDoc) && (
-          <DiffView
-            leftDoc={leftDoc}
-            rightDoc={rightDoc}
-            selectedPage={selectedPage}
+          <Grid gutter="lg" className="doc-content-grid">
+            <Grid.Col span={{ base: 12, xl: 4 }}>
+              <SurfaceCard title={t('documents.page')} className="doc-list-surface" padded={false}>
+                <PageList
+                  leftDoc={leftDoc}
+                  rightDoc={rightDoc}
+                  selectedPage={selectedPage}
+                  onSelectPage={(n) => setDocumentSession({ selectedPage: n })}
+                />
+              </SurfaceCard>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, xl: 8 }}>
+              <SurfaceCard title={t('documents.changes')} className="doc-diff-surface" padded={false}>
+                <DiffView
+                  leftDoc={leftDoc}
+                  rightDoc={rightDoc}
+                  selectedPage={selectedPage}
+                />
+              </SurfaceCard>
+            </Grid.Col>
+          </Grid>
+        )}
+
+        {!leftDoc && !rightDoc && (
+          <EmptyState
+            icon={<IconFileDescription size={28} stroke={1.8} />}
+            title={t('documents.title')}
+            description={t('documents.loadTwoPdfs')}
           />
         )}
-      </div>
-
-      {!leftDoc && !rightDoc && (
-        <div className="viewer-placeholder">
-          <p>{t('documents.loadTwoPdfs')}</p>
-        </div>
-      )}
-    </div>
+      </Stack>
+    </section>
   )
 }
