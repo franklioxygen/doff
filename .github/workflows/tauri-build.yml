@@ -54,7 +54,20 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'doff ${{ github.ref_name }}'
-          releaseBody: 'See the assets below to download and install doff for your platform.'
-          releaseDraft: true
+          releaseBody: |
+            ## Download guide
+
+            Choose the package that matches your platform:
+
+            | Platform | Download this file | Notes |
+            | --- | --- | --- |
+            | macOS (Apple Silicon or Intel) | `.dmg` | Recommended installer. This build is universal, so one download works on both Apple Silicon and Intel Macs. |
+            | Windows | `.msi` or `.exe` | Standard Windows installers. |
+            | Linux (Ubuntu / Debian) | `.deb` | Best choice for Debian-based distributions. |
+            | Linux (Fedora / RHEL / openSUSE) | `.rpm` | Best choice for RPM-based distributions. |
+            | Linux (portable) | `.AppImage` | Portable build that can run without installing through a package manager. |
+
+            Companion files such as `.sig`, `.zip`, `.tar.gz`, or updater metadata are usually not the main installer for end users.
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
