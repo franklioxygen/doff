@@ -20,7 +20,8 @@
   <a href="https://doff-franklioxygen.vercel.app"><strong>在线体验</strong></a>
 </p>
 
-![Screenshot 2026-03-23 at 11 43 06 AM](https://github.com/user-attachments/assets/93ef493a-8a92-420b-924e-b9cbcd1dc551)
+![Screenshot 2026-03-23 at 11 54 06 AM](https://github.com/user-attachments/assets/cf698d43-ee57-452c-8855-89ca12d344dc)
+
 
 ## 功能特性
 
