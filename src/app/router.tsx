@@ -1,11 +1,12 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppLayout } from '../components/layout/AppLayout'
-import { PlaceholderPage } from '../components/layout/PlaceholderPage'
 import { TextPage } from '../features/text/TextPage'
 import { ImageComparePage } from '../features/images/ImageComparePage'
 import { DocumentComparePage } from '../features/documents/DocumentComparePage'
 import { SpreadsheetComparePage } from '../features/spreadsheets/SpreadsheetComparePage'
 import { FolderComparePage } from '../features/folders/FolderComparePage'
+import { SettingsPage } from '../features/settings/SettingsPage'
+import { AboutPrivacyPage } from '../features/about/AboutPrivacyPage'
 
 export const router = createBrowserRouter([
   {
@@ -24,24 +25,8 @@ export const router = createBrowserRouter([
         path: 'folders',
         element: <FolderComparePage />,
       },
-      {
-        path: 'settings',
-        element: (
-          <PlaceholderPage
-            title="Settings"
-            description="Global defaults, performance limits, and optional modules appear here."
-          />
-        ),
-      },
-      {
-        path: 'about/privacy',
-        element: (
-          <PlaceholderPage
-            title="About & Privacy"
-            description="doff processes file contents entirely in your browser. No uploads occur."
-          />
-        ),
-      },
+      { path: 'settings', element: <SettingsPage /> },
+      { path: 'about/privacy', element: <AboutPrivacyPage /> },
       { path: '*', element: <Navigate to="/text" replace /> },
     ],
   },

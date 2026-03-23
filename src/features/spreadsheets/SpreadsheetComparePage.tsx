@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
-import { useSessionStore } from '../../store/sessionStore'
+import { useSessionStore, type SpreadsheetSession } from '../../store/sessionStore'
+import { useI18n } from '../../i18n'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -142,16 +143,19 @@ function compareSheets(left: SheetData, right: SheetData): SheetDiff {
 // ─── Drop Zone ───────────────────────────────────────────────────────────────
 
 function DropZone({
+  inputId,
   label,
   file,
   onFile,
   accept = '.xlsx,.xls',
 }: {
+  inputId: string
   label: string
   file: LoadedFile | null
   onFile: (file: LoadedFile) => void
   accept?: string
 }) {
+  const { t, formatNumber } = useI18n()
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState('')
 
@@ -191,12 +195,12 @@ function DropZone({
       })
       onFile({ name: f.name, sheets, rawSheets: wb.Sheets, workbook: wb })
     } catch {
-      setError('Failed to parse file. Make sure it is a valid .xlsx file.')
+      setError(t('spreadsheets.failedParse'))
     }
   }
 
   return (
-    <div className={`drop-zone ${dragging ? 'dragging' : ''} ${file ? 'has-file' : ''}`}>
+    <div className={`sz-drop-zone ${dragging ? 'dragging' : ''} ${file ? 'has-file' : ''}`}>
       <input
         type="file"
         accept={accept}
@@ -205,29 +209,39 @@ function DropZone({
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
         style={{ display: 'none' }}
-        id={`file-input-${label}`}
+        id={inputId}
       />
       {file ? (
-        <div className="file-loaded">
-          <div className="file-icon">📊</div>
-          <div className="file-name">{file.name}</div>
-          <div className="file-meta">{file.sheets.length} sheet{file.sheets.length !== 1 ? 's' : ''}</div>
+        <div className="sz-file-loaded">
+          <svg className="sz-file-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <line x1="3" y1="9" x2="21" y2="9" />
+            <line x1="3" y1="15" x2="21" y2="15" />
+            <line x1="9" y1="3" x2="9" y2="21" />
+          </svg>
+          <div className="sz-file-name">{file.name}</div>
+          <div className="sz-file-meta">{t('spreadsheets.sheetsCount', { count: formatNumber(file.sheets.length) })}</div>
           <button
             type="button"
-            className="swap-btn"
-            onClick={() => document.getElementById(`file-input-${label}`)?.click()}
+            className="sz-file-btn"
+            onClick={() => document.getElementById(inputId)?.click()}
           >
-            Replace
+            {t('common.replace')}
           </button>
         </div>
       ) : (
-        <label htmlFor={`file-input-${label}`} className="drop-zone-label">
-          <div className="drop-zone-icon">📋</div>
-          <div className="drop-zone-title">{label}</div>
-          <div className="drop-zone-hint">Drop .xlsx here or click to browse</div>
+        <label htmlFor={inputId} className="sz-drop-zone-label">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <line x1="3" y1="9" x2="21" y2="9" />
+            <line x1="3" y1="15" x2="21" y2="15" />
+            <line x1="9" y1="3" x2="9" y2="21" />
+          </svg>
+          <div className="sz-drop-zone-title">{label}</div>
+          <div className="sz-drop-zone-hint">{t('spreadsheets.dropHint')}</div>
         </label>
       )}
-      {error && <div className="drop-zone-error">{error}</div>}
+      {error && <div className="sz-drop-zone-error">{error}</div>}
     </div>
   )
 }
@@ -245,9 +259,10 @@ function SheetSelector({
   side: 'left' | 'right'
   onSelect: (name: string) => void
 }) {
+  const { t, formatNumber } = useI18n()
   return (
     <div className="sheet-selector">
-      <span className="sheet-selector-label">{side === 'left' ? 'Left sheet' : 'Right sheet'}</span>
+      <span className="sheet-selector-label">{side === 'left' ? t('spreadsheets.leftSheet') : t('spreadsheets.rightSheet')}</span>
       <select
         value={selected}
         onChange={(e) => onSelect(e.target.value)}
@@ -255,7 +270,7 @@ function SheetSelector({
       >
         {sheets.map((s) => (
           <option key={s.name} value={s.name}>
-            {s.name} ({s.rows.length} rows)
+            {s.name} ({t('spreadsheets.rowsCount', { count: formatNumber(s.rows.length) })})
           </option>
         ))}
       </select>
@@ -266,16 +281,32 @@ function SheetSelector({
 // ─── Diff Table ───────────────────────────────────────────────────────────────
 
 function DiffTable({ diff }: { diff: SheetDiff }) {
+  const { t, formatNumber } = useI18n()
   const { allKeys, grid, stats } = diff
+
+  const cellStatusLabel = (status: CellStatus) => {
+    switch (status) {
+      case 'same':
+        return t('spreadsheets.statusSame')
+      case 'changed':
+        return t('spreadsheets.statusChanged')
+      case 'added-left':
+        return t('spreadsheets.statusOnlyLeft')
+      case 'added-right':
+        return t('spreadsheets.statusOnlyRight')
+      default:
+        return status
+    }
+  }
 
   return (
     <div className="diff-table-wrapper">
       <div className="diff-summary">
-        <span className="stat same">{stats.same} same</span>
-        <span className="stat changed">{stats.changed} changed</span>
-        <span className="stat added-left">{stats.addedLeft} only left</span>
-        <span className="stat added-right">{stats.addedRight} only right</span>
-        <span className="stat total">{stats.total} total cells</span>
+        <span className="stat same">{t('spreadsheets.sameCount', { count: formatNumber(stats.same) })}</span>
+        <span className="stat changed">{t('spreadsheets.changedCount', { count: formatNumber(stats.changed) })}</span>
+        <span className="stat added-left">{t('spreadsheets.onlyLeftCount', { count: formatNumber(stats.addedLeft) })}</span>
+        <span className="stat added-right">{t('spreadsheets.onlyRightCount', { count: formatNumber(stats.addedRight) })}</span>
+        <span className="stat total">{t('spreadsheets.totalCellsCount', { count: formatNumber(stats.total) })}</span>
       </div>
       <div className="diff-table-scroll">
         <table className="diff-table">
@@ -297,7 +328,11 @@ function DiffTable({ diff }: { diff: SheetDiff }) {
                     <td
                       key={key}
                       className={`data-cell cell-${cell.status}`}
-                      title={`${key} @ row ${ri + 1}: ${cell.status}`}
+                      title={t('spreadsheets.cellTitle', {
+                        column: String(key),
+                        row: formatNumber(ri + 1),
+                        status: cellStatusLabel(cell.status),
+                      })}
                     >
                       <span className="cell-value">
                         {cell.value === undefined || cell.value === null || cell.value === ''
@@ -320,15 +355,15 @@ function DiffTable({ diff }: { diff: SheetDiff }) {
 
 export function SpreadsheetComparePage() {
   const { spreadsheetSession, setSpreadsheetSession } = useSessionStore()
+  const { t } = useI18n()
 
   const [leftFile, setLeftFile] = useState<LoadedFile | null>(spreadsheetSession.leftFile)
   const [rightFile, setRightFile] = useState<LoadedFile | null>(spreadsheetSession.rightFile)
   const [leftSheet, setLeftSheet] = useState<string>(spreadsheetSession.leftSheet || '')
   const [rightSheet, setRightSheet] = useState<string>(spreadsheetSession.rightSheet || '')
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const syncSession = useCallback(
-    (partial: any) => {
+    (partial: Partial<SpreadsheetSession>) => {
       setSpreadsheetSession(partial)
     },
     [setSpreadsheetSession],
@@ -404,21 +439,20 @@ export function SpreadsheetComparePage() {
   return (
     <div className="spreadsheet-page">
       <div className="page-header">
-        <h1 className="page-title">Spreadsheet Compare</h1>
-        <p className="page-desc">Compare two Excel (.xlsx) files cell-by-cell. All processing happens locally in your browser.</p>
+        <h1>{t('spreadsheets.title')}</h1>
       </div>
 
-      <div className="file-panels">
-        <DropZone label="Left file" file={leftFile} onFile={handleLeftFile} />
+      <div className="compare-panels">
+        <DropZone inputId="spreadsheet-left-file" label={t('spreadsheets.leftFile')} file={leftFile} onFile={handleLeftFile} />
         <div className="panel-actions">
-          <button type="button" className="action-btn swap-btn" onClick={swap} disabled={!leftFile || !rightFile} title="Swap sides">
+          <button type="button" className="action-btn swap-btn" onClick={swap} disabled={!leftFile || !rightFile} title={t('spreadsheets.swapTitle')}>
             ⇄
           </button>
-          <button type="button" className="action-btn clear-btn" onClick={clear} disabled={!leftFile && !rightFile} title="Clear">
+          <button type="button" className="action-btn clear-btn" onClick={clear} disabled={!leftFile && !rightFile} title={t('spreadsheets.clearTitle')}>
             ✕
           </button>
         </div>
-        <DropZone label="Right file" file={rightFile} onFile={handleRightFile} />
+        <DropZone inputId="spreadsheet-right-file" label={t('spreadsheets.rightFile')} file={rightFile} onFile={handleRightFile} />
       </div>
 
       {leftFile && rightFile && (
@@ -432,7 +466,7 @@ export function SpreadsheetComparePage() {
         <>
           <div className="diff-header">
             <span className="diff-title">
-              Comparing: <strong>{diff.leftSheet}</strong> ↔ <strong>{diff.rightSheet}</strong>
+              {t('spreadsheets.comparingSheets', { left: diff.leftSheet, right: diff.rightSheet })}
             </span>
           </div>
           <DiffTable diff={diff} />
@@ -440,210 +474,21 @@ export function SpreadsheetComparePage() {
       )}
 
       {!diff && leftFile && rightFile && (
-        <div className="no-diff-hint">Select sheets above to see the cell diff.</div>
+        <div className="no-diff-hint">{t('spreadsheets.selectSheets')}</div>
       )}
 
       {!leftFile && !rightFile && (
         <div className="empty-state">
-          <div className="empty-icon">📊</div>
-          <div className="empty-title">No files loaded</div>
-          <div className="empty-desc">Drop two .xlsx files above to compare them cell by cell.</div>
+          <svg className="empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <line x1="3" y1="9" x2="21" y2="9" />
+            <line x1="3" y1="15" x2="21" y2="15" />
+            <line x1="9" y1="3" x2="9" y2="21" />
+          </svg>
+          <div className="empty-title">{t('spreadsheets.noFiles')}</div>
+          <div className="empty-desc">{t('spreadsheets.emptyDescription')}</div>
         </div>
       )}
-
-      <style>{`
-        .spreadsheet-page {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-          padding: 1.5rem;
-          height: 100%;
-        }
-        .page-header { flex-shrink: 0; }
-        .page-title {
-          font-size: 1.5rem;
-          font-weight: 700;
-          margin: 0 0 0.25rem;
-          font-family: var(--font-sans);
-        }
-        .page-desc {
-          margin: 0;
-          color: var(--text-subtle);
-          font-size: 0.875rem;
-        }
-        .file-panels {
-          display: grid;
-          grid-template-columns: 1fr auto 1fr;
-          gap: 1rem;
-          align-items: stretch;
-          flex-shrink: 0;
-        }
-        .panel-actions {
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          gap: 0.5rem;
-          padding-top: 2rem;
-        }
-        .action-btn {
-          width: 2.5rem;
-          height: 2.5rem;
-          border: 1px solid var(--border);
-          background: var(--surface);
-          border-radius: 8px;
-          cursor: pointer;
-          font-size: 1rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: background 0.15s;
-        }
-        .action-btn:hover:not(:disabled) { background: var(--surface-muted); }
-        .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .drop-zone {
-          border: 2px dashed var(--border);
-          border-radius: 12px;
-          padding: 1.5rem;
-          text-align: center;
-          cursor: pointer;
-          transition: border-color 0.15s, background 0.15s;
-          min-height: 120px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 0.25rem;
-        }
-        .drop-zone.dragging { border-color: var(--accent); background: var(--added-bg); }
-        .drop-zone.has-file { border-style: solid; border-color: var(--accent); background: var(--surface); }
-        .drop-zone-label { cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
-        .drop-zone-icon, .file-icon { font-size: 2rem; }
-        .drop-zone-title { font-weight: 600; font-size: 0.9rem; }
-        .drop-zone-hint { font-size: 0.75rem; color: var(--text-subtle); }
-        .file-loaded { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
-        .file-name { font-weight: 600; font-size: 0.9rem; word-break: break-all; }
-        .file-meta { font-size: 0.75rem; color: var(--text-subtle); }
-        .swap-btn, .clear-btn {
-          font-size: 0.75rem;
-          padding: 0.25rem 0.75rem;
-          border: 1px solid var(--border);
-          border-radius: 6px;
-          cursor: pointer;
-          background: var(--surface-muted);
-          color: var(--text);
-          margin-top: 0.25rem;
-        }
-        .swap-btn:hover, .clear-btn:hover { background: var(--border); }
-        .drop-zone-error { color: var(--removed-fg); font-size: 0.75rem; margin-top: 0.5rem; }
-        .sheet-selectors {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1rem;
-          flex-shrink: 0;
-        }
-        .sheet-selector {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          padding: 0.75rem 1rem;
-        }
-        .sheet-selector-label { font-size: 0.8rem; font-weight: 600; color: var(--text-subtle); white-space: nowrap; }
-        .sheet-select {
-          flex: 1;
-          border: 1px solid var(--border);
-          border-radius: 6px;
-          padding: 0.35rem 0.5rem;
-          background: var(--surface-muted);
-          color: var(--text);
-          font-size: 0.875rem;
-          font-family: var(--font-sans);
-        }
-        .diff-header {
-          flex-shrink: 0;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-        .diff-title { font-size: 0.875rem; color: var(--text-subtle); }
-        .diff-summary {
-          display: flex;
-          gap: 1rem;
-          flex-wrap: wrap;
-          padding: 0.5rem 0;
-          font-size: 0.8rem;
-          font-family: var(--font-mono);
-          flex-shrink: 0;
-        }
-        .stat { padding: 0.2rem 0.5rem; border-radius: 4px; }
-        .stat.same { background: var(--surface-muted); color: var(--text-subtle); }
-        .stat.changed { background: var(--changed-bg); color: var(--changed-fg); }
-        .stat.added-left { background: var(--removed-bg); color: var(--removed-fg); }
-        .stat.added-right { background: var(--added-bg); color: var(--added-fg); }
-        .stat.total { background: var(--surface-muted); color: var(--text-subtle); }
-        .diff-table-wrapper {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 12px;
-        }
-        .diff-table-scroll { overflow: auto; flex: 1; }
-        .diff-table {
-          border-collapse: collapse;
-          width: 100%;
-          font-size: 0.8rem;
-          font-family: var(--font-mono);
-        }
-        .diff-table th, .diff-table td {
-          border: 1px solid var(--border);
-          padding: 0.3rem 0.5rem;
-          white-space: nowrap;
-          min-width: 60px;
-          max-width: 200px;
-        }
-        .diff-table th {
-          background: var(--surface-muted);
-          font-weight: 600;
-          position: sticky;
-          top: 0;
-          z-index: 1;
-        }
-        .row-num-col { min-width: 40px !important; width: 40px; background: var(--surface-muted) !important; font-weight: 600; color: var(--text-subtle); }
-        .data-cell.cell-same { background: var(--surface); }
-        .data-cell.cell-changed { background: var(--changed-bg); }
-        .data-cell.cell-added-left { background: var(--removed-bg); }
-        .data-cell.cell-added-right { background: var(--added-bg); }
-        .cell-value { display: block; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
-        .no-diff-hint {
-          text-align: center;
-          color: var(--text-subtle);
-          font-size: 0.875rem;
-          padding: 2rem;
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 12px;
-        }
-        .empty-state {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          padding: 4rem;
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 12px;
-          flex: 1;
-        }
-        .empty-icon { font-size: 3rem; }
-        .empty-title { font-size: 1.1rem; font-weight: 700; }
-        .empty-desc { color: var(--text-subtle); font-size: 0.875rem; }
-      `}</style>
     </div>
   )
 }

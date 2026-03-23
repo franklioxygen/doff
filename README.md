@@ -1,73 +1,68 @@
-# React + TypeScript + Vite
+# doff
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+<p align="center">
+  <img src="public/icon-512.png" alt="doff app icon" width="256" height="256">
+</p>
 
-Currently, two official plugins are available:
+<p align="center">
+  <strong>Local-first, offline-ready diff workspace for text, images, documents, spreadsheets, and folders.</strong>
+</p>
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+<p align="center">
+  doff runs entirely in your browser — no uploads, no accounts, no servers. Compare files privately and instantly.
+</p>
 
-## React Compiler
+<p align="center">
+  <a href="https://doff-franklioxygen.vercel.app"><strong>Live Demo</strong></a>
+</p>
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Features
 
-## Expanding the ESLint configuration
+- **Text diff** — side-by-side and unified views with intraline highlighting, powered by Monaco Editor.
+- **Image compare** — pixel-level diffing with overlay, side-by-side, and slider modes.
+- **Document diff** — compare PDF documents page by page.
+- **Spreadsheet diff** — compare Excel (.xlsx) and CSV files cell by cell.
+- **Folder diff** — compare directory structures and contents.
+- **Offline-ready** — installable PWA that works without an internet connection.
+- **Multi-language** — English, Spanish, French, German, Japanese, and Chinese.
+- **Dark mode** — automatic or manual theme switching.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Privacy
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- No account, cloud backend, analytics, or telemetry.
+- All processing happens locally in your browser.
+- Files never leave your machine.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Getting Started
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Run with Docker
+
+```bash
+docker run -d -p 5560:80 --name doff ghcr.io/franklioxygen/doff:latest
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Or use Docker Compose:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+docker compose up -d
 ```
+
+Then open [http://localhost:5560](http://localhost:5560).
+
+### Build from Source
+
+```bash
+git clone https://github.com/franklioxygen/doff.git
+cd doff
+npm install
+npm run dev
+```
+
+## Requirements
+
+- Any modern browser (Chrome, Firefox, Safari, Edge)
+- Node.js 20+ (for development)
+
+## License
+
+MIT

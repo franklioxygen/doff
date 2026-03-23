@@ -1,27 +1,33 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useSessionStore } from '../../store/sessionStore'
+import { useI18n } from '../../i18n'
+import { Footer } from './Footer'
 
 const NAV_ITEMS = [
-  { label: 'Text', to: '/text' },
-  { label: 'Images', to: '/images' },
-  { label: 'Documents', to: '/documents' },
-  { label: 'Spreadsheets', to: '/spreadsheets' },
-  { label: 'Folders', to: '/folders' },
-  { label: 'Settings', to: '/settings' },
-  { label: 'About/Privacy', to: '/about/privacy' },
-]
+  { labelKey: 'nav.text', to: '/text' },
+  { labelKey: 'nav.images', to: '/images' },
+  { labelKey: 'nav.documents', to: '/documents' },
+  { labelKey: 'nav.spreadsheets', to: '/spreadsheets' },
+  { labelKey: 'nav.folders', to: '/folders' },
+  { labelKey: 'nav.settings', to: '/settings' },
+  { labelKey: 'nav.aboutPrivacy', to: '/about/privacy' },
+] as const
 
 export function AppLayout() {
   const theme = useSessionStore((state) => state.theme)
   const toggleTheme = useSessionStore((state) => state.toggleTheme)
+  const { t } = useI18n()
 
   return (
     <>
-      <a href="#main-content" className="skip-link">Skip to main content</a>
+      <a href="#main-content" className="skip-link">{t('app.skipToMain')}</a>
       <div className="app-shell">
         <header className="top-nav" role="banner">
-          <div className="brand">doff</div>
-          <nav aria-label="Primary">
+          <div className="brand">
+            <img src="/icon-192.png" alt="doff logo" className="brand-logo-img" />
+            doff
+          </div>
+          <nav aria-label={t('app.primaryNav')}>
             <ul className="nav-list">
               {NAV_ITEMS.map((item) => (
                 <li key={item.to}>
@@ -31,19 +37,18 @@ export function AppLayout() {
                       isActive ? 'nav-link nav-link-active' : 'nav-link'
                     }
                   >
-                    {item.label}
+                    {t(item.labelKey)}
                   </NavLink>
                 </li>
               ))}
             </ul>
           </nav>
           <div className="top-actions">
-            <span className="privacy-badge">Local only • Offline-ready • No uploads</span>
             <button
               type="button"
               className="mode-btn"
               onClick={toggleTheme}
-              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={theme === 'dark' ? t('app.switchToLight') : t('app.switchToDark')}
             >
               {theme === 'dark' ? (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -68,6 +73,7 @@ export function AppLayout() {
         <main id="main-content" className="workspace" role="main">
           <Outlet />
         </main>
+        <Footer />
       </div>
     </>
   )

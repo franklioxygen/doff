@@ -7,6 +7,7 @@ import {
 import type { MouseEvent } from 'react'
 import { useSessionStore } from '../../store/sessionStore'
 import type { ImageInfo, ImageCompareMode } from '../../store/sessionStore'
+import { useI18n } from '../../i18n'
 import pixelmatch from 'pixelmatch'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -41,6 +42,7 @@ const formatBytes = (n: number): string => {
 }
 
 const MATCH_OPTIONS = { threshold: 0.1 }
+const DEFAULT_TRANSFORM = { tx: 0, ty: 0, scale: 1 }
 
 const computeDiffPercent = (
   left: ImageBitmap,
@@ -71,11 +73,12 @@ const computeDiffPercent = (
 type DropZoneProps = {
   label: string
   image: ImageInfo | null
-  onFile: (file: File) => void
+  onFile: (file: File | null) => void
   side: 'left' | 'right'
 }
 
 const DropZone = ({ label, image, onFile, side }: DropZoneProps) => {
+  const { t } = useI18n()
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
 
@@ -93,7 +96,11 @@ const DropZone = ({ label, image, onFile, side }: DropZoneProps) => {
     <div className={`drop-zone ${dragging ? 'drop-zone-active' : ''} ${image ? 'drop-zone-filled' : ''}`}>
       {image ? (
         <div className="dz-preview">
-          <img src={image.dataUrl} alt={`${side} preview`} className="dz-thumb" />
+          <img
+            src={image.dataUrl}
+            alt={side === 'left' ? t('images.leftPreviewAlt') : t('images.rightPreviewAlt')}
+            className="dz-thumb"
+          />
           <div className="dz-info">
             <span className="dz-name">{image.name}</span>
             <span className="dz-meta">
@@ -102,10 +109,10 @@ const DropZone = ({ label, image, onFile, side }: DropZoneProps) => {
           </div>
           <div className="dz-actions">
             <button type="button" onClick={() => inputRef.current?.click()}>
-              Replace
+              {t('common.replace')}
             </button>
-            <button type="button" onClick={() => onFile(null as unknown as File)}>
-              Clear
+            <button type="button" onClick={() => onFile(null)}>
+              {t('common.clear')}
             </button>
           </div>
         </div>
@@ -119,20 +126,20 @@ const DropZone = ({ label, image, onFile, side }: DropZoneProps) => {
           role="button"
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter') inputRef.current?.click() }}
-          aria-label={`${label}: drop or click to select image`}
+          aria-label={t('images.dropZoneAria', { label })}
         >
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
             <rect x="3" y="3" width="18" height="18" rx="2" />
             <circle cx="8.5" cy="8.5" r="1.5" />
             <polyline points="21 15 16 10 5 21" />
           </svg>
-          <p>Drop image here</p>
-          <span>or click to browse</span>
+          <p>{t('images.dropHere')}</p>
+          <span>{t('images.orClickBrowse')}</span>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); inputRef.current?.click() }}
           >
-            Open file
+            {t('common.openFile')}
           </button>
         </div>
       )}
@@ -159,6 +166,7 @@ type ViewCanvasProps = {
 }
 
 const ViewCanvas = ({ image, style }: ViewCanvasProps) => {
+  const { t } = useI18n()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [transform, setTransform] = useState({ tx: 0, ty: 0, scale: 1 })
@@ -223,10 +231,10 @@ const ViewCanvas = ({ image, style }: ViewCanvasProps) => {
       style={{ cursor: image ? 'grab' : 'default', ...style }}
     >
       {image && (
-        <div className="view-hint">Scroll to zoom · Drag to pan</div>
+        <div className="view-hint">{t('images.scrollZoomPan')}</div>
       )}
       <canvas ref={canvasRef} style={{ maxWidth: '100%', display: 'block' }} />
-      {!image && <div className="view-empty">No image</div>}
+      {!image && <div className="view-empty">{t('images.noImage')}</div>}
     </div>
   )
 }
@@ -428,26 +436,38 @@ const SliderCanvas = ({ left, right, sliderPct, mode, transform }: SliderCanvasP
 
 // ─── main page ───────────────────────────────────────────────────────────────
 
-const MODES: { id: ImageCompareMode; label: string }[] = [
-  { id: 'slider', label: 'Slider' },
-  { id: 'fade', label: 'Fade' },
-  { id: 'overlay', label: 'Overlay' },
-  { id: 'diff', label: 'Diff Mask' },
-]
-
 export function ImageComparePage() {
   const imageSession = useSessionStore((s) => s.imageSession)
   const setImageSession = useSessionStore((s) => s.setImageSession)
   const clearImageSession = useSessionStore((s) => s.clearImageSession)
+  const { t, formatNumber } = useI18n()
 
   const [diffPct, setDiffPct] = useState<number | null>(null)
   const [computing, setComputing] = useState(false)
-  const [transform, setTransform] = useState({ tx: 0, ty: 0, scale: 1 })
+  const [transform, setTransform] = useState(DEFAULT_TRANSFORM)
 
   const { leftImage, rightImage, mode, sliderPosition } = imageSession
+  const modes: { id: ImageCompareMode; label: string }[] = [
+    { id: 'slider', label: t('images.slider') },
+    { id: 'fade', label: t('images.fade') },
+    { id: 'overlay', label: t('images.overlay') },
+    { id: 'diff', label: t('images.diffMask') },
+  ]
 
   const handleFile = useCallback(
-    async (side: 'left' | 'right', file: File) => {
+    async (side: 'left' | 'right', file: File | null) => {
+      if (!file) {
+        if (side === 'left') {
+          setImageSession({ leftImage: null, diffPercent: null })
+        } else {
+          setImageSession({ rightImage: null, diffPercent: null })
+        }
+        setDiffPct(null)
+        setComputing(false)
+        setTransform(DEFAULT_TRANSFORM)
+        return
+      }
+
       try {
         const info = await fileToImageInfo(file)
         setImageSession({ [side === 'left' ? 'leftImage' : 'rightImage']: info, diffPercent: null })
@@ -458,6 +478,13 @@ export function ImageComparePage() {
     },
     [setImageSession],
   )
+
+  const handleClearSession = useCallback(() => {
+    clearImageSession()
+    setDiffPct(null)
+    setComputing(false)
+    setTransform(DEFAULT_TRANSFORM)
+  }, [clearImageSession])
 
   // Compute diff when both images are loaded
   useEffect(() => {
@@ -487,26 +514,31 @@ export function ImageComparePage() {
 
   const bothLoaded = leftImage && rightImage
 
-  const handleResetZoom = () => setTransform({ tx: 0, ty: 0, scale: 1 })
+  const handleResetZoom = () => setTransform(DEFAULT_TRANSFORM)
 
   return (
     <div className="image-page">
       <div className="page-header">
-        <h1>Image Compare</h1>
+        <h1>{t('images.title')}</h1>
         <div className="stat-pills">
           {diffPct !== null && (
             <span className="pill pill-changed">
-              {diffPct.toFixed(1)}% different pixels
+              {t('images.diffPixels', {
+                value: formatNumber(diffPct, {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                }),
+              })}
             </span>
           )}
-          {computing && <span className="pill">Computing diff…</span>}
+          {computing && <span className="pill">{t('images.computingDiff')}</span>}
           {bothLoaded && (
             <>
               <span className="pill">
-                Left: {leftImage!.width}×{leftImage!.height}
+                {t('images.leftDimensions', { dimensions: `${leftImage!.width}×${leftImage!.height}` })}
               </span>
               <span className="pill">
-                Right: {rightImage!.width}×{rightImage!.height}
+                {t('images.rightDimensions', { dimensions: `${rightImage!.width}×${rightImage!.height}` })}
               </span>
               <span className="pill">
                 {formatBytes(leftImage!.size)} · {formatBytes(rightImage!.size)}
@@ -519,13 +551,13 @@ export function ImageComparePage() {
       {/* Drop zones */}
       <div className="image-dropzones">
         <DropZone
-          label="Left image"
+          label={t('images.leftImage')}
           image={leftImage}
           onFile={(f) => handleFile('left', f)}
           side="left"
         />
         <DropZone
-          label="Right image"
+          label={t('images.rightImage')}
           image={rightImage}
           onFile={(f) => handleFile('right', f)}
           side="right"
@@ -535,8 +567,8 @@ export function ImageComparePage() {
       {/* Toolbar */}
       <div className="toolbar">
         <div className="toolbar-group">
-          <span style={{ fontWeight: 500, marginRight: 4 }}>Mode:</span>
-          {MODES.map((m) => (
+          <span style={{ fontWeight: 500, marginRight: 4 }}>{t('common.mode')}:</span>
+          {modes.map((m) => (
             <button
               key={m.id}
               type="button"
@@ -550,11 +582,11 @@ export function ImageComparePage() {
         <div className="toolbar-group">
           {bothLoaded && mode !== 'diff' && (
             <button type="button" onClick={() => setImageSession({ mode: 'diff' })}>
-              Compute diff %
+              {t('images.computeDiffPercent')}
             </button>
           )}
-          <button type="button" onClick={handleResetZoom}>Reset zoom</button>
-          <button type="button" onClick={clearImageSession}>Clear session</button>
+          <button type="button" onClick={handleResetZoom}>{t('images.resetZoom')}</button>
+          <button type="button" onClick={handleClearSession}>{t('images.clearSession')}</button>
         </div>
       </div>
 
@@ -562,7 +594,7 @@ export function ImageComparePage() {
       <div className="image-viewer-area">
         {!bothLoaded && (
           <div className="viewer-placeholder">
-            <p>Load two images above to compare them.</p>
+            <p>{t('images.loadTwoImages')}</p>
           </div>
         )}
         {bothLoaded && mode === 'diff' && (

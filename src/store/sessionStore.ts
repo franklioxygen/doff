@@ -1,9 +1,14 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { getPreferredLocale, type SupportedLocale } from '../i18n/config'
 
 // Safari < 15.4 doesn't have crypto.randomUUID
 const randomUUID = () =>
   typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)
+
+const getPreferredTheme = (): 'light' | 'dark' => (
+  typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+)
 
 export type DiffViewMode = 'split' | 'unified'
 export type DiffPrecision = 'word' | 'character'
@@ -93,6 +98,9 @@ export type FolderSession = {
 
 type SessionState = {
   theme: 'light' | 'dark'
+  locale: SupportedLocale
+  rememberTextSession: boolean
+  textDefaults: TextDiffOptions
   textSession: TextSession
   imageSession: ImageSession
   documentSession: DocumentSession
@@ -100,6 +108,12 @@ type SessionState = {
   folderSession: FolderSession
   setTheme: (theme: 'light' | 'dark') => void
   toggleTheme: () => void
+  setLocale: (locale: SupportedLocale) => void
+  setRememberTextSession: (remember: boolean) => void
+  setTextDefaults: (partial: Partial<TextDiffOptions>) => void
+  applyTextDefaultsToTextSession: () => void
+  resetTextDefaults: () => void
+  resetAllLocalData: () => void
   setLeftText: (value: string, sourceName?: string) => void
   setRightText: (value: string, sourceName?: string) => void
   setTextOptions: (partial: Partial<TextDiffOptions>) => void
@@ -130,7 +144,7 @@ const defaultTextOptions: TextDiffOptions = {
   tabSpaceMode: 'none',
 }
 
-const createDefaultSession = (): TextSession => {
+const createDefaultSession = (defaults: TextDiffOptions = defaultTextOptions): TextSession => {
   const now = new Date().toISOString()
   return {
     id: randomUUID(),
@@ -138,9 +152,39 @@ const createDefaultSession = (): TextSession => {
     updatedAt: now,
     leftText: '',
     rightText: '',
-    options: defaultTextOptions,
+    options: { ...defaults },
   }
 }
+
+const createInitialState = () => ({
+  theme: getPreferredTheme() as 'light' | 'dark',
+  locale: getPreferredLocale(),
+  rememberTextSession: true,
+  textDefaults: { ...defaultTextOptions },
+  textSession: createDefaultSession(defaultTextOptions),
+  imageSession: {
+    leftImage: null,
+    rightImage: null,
+    mode: 'slider' as ImageCompareMode,
+    diffPercent: null,
+    sliderPosition: 50,
+  },
+  documentSession: {
+    leftDoc: null,
+    rightDoc: null,
+    selectedPage: 1,
+  },
+  spreadsheetSession: {
+    leftFile: null,
+    rightFile: null,
+    leftSheet: '',
+    rightSheet: '',
+  },
+  folderSession: {
+    leftFolder: null,
+    rightFolder: null,
+  },
+})
 
 const touch = (session: TextSession): TextSession => ({
   ...session,
@@ -149,34 +193,29 @@ const touch = (session: TextSession): TextSession => ({
 
 export const useSessionStore = create<SessionState>()(
   persist(
-    (set) => ({
-      theme: 'light',
-      textSession: createDefaultSession(),
-      imageSession: {
-        leftImage: null,
-        rightImage: null,
-        mode: 'slider',
-        diffPercent: null,
-        sliderPosition: 50,
-      },
-      documentSession: {
-        leftDoc: null,
-        rightDoc: null,
-        selectedPage: 1,
-      },
-      spreadsheetSession: {
-        leftFile: null,
-        rightFile: null,
-        leftSheet: '',
-        rightSheet: '',
-      },
-      folderSession: {
-        leftFolder: null,
-        rightFolder: null,
-      },
+    (set, get) => ({
+      ...createInitialState(),
       setTheme: (theme) => set({ theme }),
       toggleTheme: () =>
         set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
+      setLocale: (locale) => set({ locale }),
+      setRememberTextSession: (rememberTextSession) => set({ rememberTextSession }),
+      setTextDefaults: (partial) =>
+        set((state) => ({
+          textDefaults: { ...state.textDefaults, ...partial },
+        })),
+      applyTextDefaultsToTextSession: () =>
+        set((state) => ({
+          textSession: touch({
+            ...state.textSession,
+            options: {
+              ...state.textSession.options,
+              ...state.textDefaults,
+            },
+          }),
+        })),
+      resetTextDefaults: () => set({ textDefaults: { ...defaultTextOptions } }),
+      resetAllLocalData: () => set(createInitialState()),
       setLeftText: (value, sourceName) =>
         set((state) => ({
           textSession: touch({
@@ -210,7 +249,7 @@ export const useSessionStore = create<SessionState>()(
             rightName: state.textSession.leftName,
           }),
         })),
-      clearTextSession: () => set({ textSession: createDefaultSession() }),
+      clearTextSession: () => set({ textSession: createDefaultSession(get().textDefaults) }),
       overwriteTextSession: (session) =>
         set((state) => ({
           textSession: touch({
@@ -261,7 +300,10 @@ export const useSessionStore = create<SessionState>()(
       name: 'doff-session-store',
       partialize: (state) => ({
         theme: state.theme,
-        textSession: state.textSession,
+        locale: state.locale,
+        rememberTextSession: state.rememberTextSession,
+        textDefaults: state.textDefaults,
+        ...(state.rememberTextSession ? { textSession: state.textSession } : {}),
       }),
     },
   ),

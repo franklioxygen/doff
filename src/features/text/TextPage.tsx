@@ -10,6 +10,8 @@ import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 import { computeDiff } from './textDiff'
 import { exportDiffHtml, loadDoffBundle, saveDoffBundle } from './exporters'
 import { useSessionStore } from '../../store/sessionStore'
+import { useI18n } from '../../i18n'
+import { TEXT_LANGUAGES } from './languages'
 
 // Use local monaco-editor instead of CDN — eliminates loader.js.map 404 and unhandled rejections
 window.MonacoEnvironment = {
@@ -25,28 +27,7 @@ window.MonacoEnvironment = {
 loader.config({ monaco })
 
 type Side = 'left' | 'right'
-
-const LANGUAGES = [
-  'plaintext',
-  'typescript',
-  'javascript',
-  'tsx',
-  'jsx',
-  'json',
-  'css',
-  'html',
-  'markdown',
-  'python',
-  'go',
-  'rust',
-  'java',
-  'csharp',
-  'cpp',
-  'yaml',
-  'xml',
-  'sql',
-  'shell',
-]
+type UnifiedLineType = 'unchanged' | 'added' | 'removed'
 
 const readFileText = async (file: File): Promise<string> => {
   const text = await file.text()
@@ -66,7 +47,7 @@ const EXT_TO_LANG: Record<string, string> = {
 
 const detectLanguageFromContent = (text: string): string | null => {
   const trimmed = text.trimStart()
-  if (/^\s*[{\[]/.test(trimmed)) {
+  if (/^\s*[{[]/.test(trimmed)) {
     try { JSON.parse(text); return 'json' } catch { /* not valid json */ }
   }
   if (/^\s*<(!doctype|html|head|body|div|span|p|a |ul|ol|li|table|form|section|article|nav|header|footer|main)\b/i.test(trimmed)) return 'html'
@@ -104,6 +85,7 @@ export function TextPage() {
   const swapSides = useSessionStore((state) => state.swapSides)
   const clearTextSession = useSessionStore((state) => state.clearTextSession)
   const overwriteTextSession = useSessionStore((state) => state.overwriteTextSession)
+  const { t, formatNumber } = useI18n()
 
   const monaco = useMonaco()
 
@@ -112,8 +94,10 @@ export function TextPage() {
   const doffFileInputRef = useRef<HTMLInputElement | null>(null)
   const leftEditorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const rightEditorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const singleEditorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const leftDecorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
   const rightDecorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
+  const singleDecorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
 
   const [frozenInputs, setFrozenInputs] = useState({
     leftText: session.leftText,
@@ -123,7 +107,9 @@ export function TextPage() {
   const [busyMessage, setBusyMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [editorsReady, setEditorsReady] = useState(0)
+  const [singleEditorReady, setSingleEditorReady] = useState(0)
   const [onlyShowDiffs, setOnlyShowDiffs] = useState(false)
+  const [showDiffInSingleInput, setShowDiffInSingleInput] = useState(false)
 
   useEffect(() => {
     if (session.options.realTime) {
@@ -165,6 +151,41 @@ export function TextPage() {
     }
   }, [diffResult])
 
+  const unifiedDiffView = useMemo(() => {
+    const lines: string[] = []
+    const types: UnifiedLineType[] = []
+
+    for (const row of diffResult.rows) {
+      if (row.type === 'unchanged') {
+        lines.push(`  ${row.leftText}`)
+        types.push('unchanged')
+        continue
+      }
+
+      if (row.type === 'removed') {
+        lines.push(`- ${row.leftText}`)
+        types.push('removed')
+        continue
+      }
+
+      if (row.type === 'added') {
+        lines.push(`+ ${row.rightText}`)
+        types.push('added')
+        continue
+      }
+
+      lines.push(`- ${row.leftText}`)
+      types.push('removed')
+      lines.push(`+ ${row.rightText}`)
+      types.push('added')
+    }
+
+    return {
+      text: lines.join('\n'),
+      types,
+    }
+  }, [diffResult])
+
   const applyManualCompare = () => {
     setFrozenInputs({
       leftText: session.leftText,
@@ -200,7 +221,7 @@ export function TextPage() {
       updateSideText(side, text, file.name)
       setErrorMessage(null)
     } catch {
-      setErrorMessage(`Failed to read ${file.name}.`)
+      setErrorMessage(t('text.failedRead', { name: file.name }))
     }
   }
 
@@ -230,7 +251,7 @@ export function TextPage() {
       updateSideText(side, text)
       setErrorMessage(null)
     } catch {
-      setErrorMessage('Clipboard read failed. Grant clipboard access and try again.')
+      setErrorMessage(t('text.clipboardReadFailed'))
     }
   }
 
@@ -240,13 +261,13 @@ export function TextPage() {
       await navigator.clipboard.writeText(value)
       setErrorMessage(null)
     } catch {
-      setErrorMessage('Copy failed. Clipboard write is not available.')
+      setErrorMessage(t('text.copyFailed'))
     }
   }
 
   const handleExportHtml = async () => {
     if (!monaco) return
-    setBusyMessage('Exporting HTML...')
+    setBusyMessage(t('text.exportingHtml'))
     try {
       await exportDiffHtml({
         monaco,
@@ -256,7 +277,7 @@ export function TextPage() {
       })
       setErrorMessage(null)
     } catch {
-      setErrorMessage('Failed to export HTML.')
+      setErrorMessage(t('text.failedExportHtml'))
     } finally {
       setBusyMessage(null)
     }
@@ -267,7 +288,7 @@ export function TextPage() {
       saveDoffBundle(session)
       setErrorMessage(null)
     } catch {
-      setErrorMessage('Failed to save .doff bundle.')
+      setErrorMessage(t('text.failedSaveDoff'))
     }
   }
 
@@ -276,7 +297,7 @@ export function TextPage() {
       return
     }
 
-    setBusyMessage('Loading .doff session...')
+    setBusyMessage(t('text.loadingDoff'))
     try {
       const bundle = await loadDoffBundle(file)
       overwriteTextSession({
@@ -291,7 +312,7 @@ export function TextPage() {
       })
       setErrorMessage(null)
     } catch {
-      setErrorMessage('Unable to load .doff file. Check that it is a valid text session bundle.')
+      setErrorMessage(t('text.invalidDoff'))
     } finally {
       setBusyMessage(null)
     }
@@ -316,6 +337,11 @@ export function TextPage() {
     wordWrap: (session.options.disableWrap ? 'off' : 'on') as 'on' | 'off',
     glyphMargin: true,
     readOnly: onlyShowDiffs,
+  }
+
+  const singleEditorOptions = {
+    ...editorOptions,
+    readOnly: true,
   }
 
   const scrollSyncLock = useRef(false)
@@ -344,6 +370,11 @@ export function TextPage() {
       other.setScrollTop(e.scrollTop)
       scrollSyncLock.current = false
     })
+  }, [])
+
+  const handleSingleMount: OnMount = useCallback((editor) => {
+    singleEditorRef.current = editor
+    setSingleEditorReady((n) => n + 1)
   }, [])
 
   // Apply diff decorations to editor gutters and line backgrounds
@@ -412,20 +443,63 @@ export function TextPage() {
       if (rightDecorationsRef.current) rightDecorationsRef.current.clear()
       rightDecorationsRef.current = rightEditor.createDecorationsCollection(rightDecorations)
     }
-  }, [diffResult, aligned, editorsReady, onlyShowDiffs])
+  }, [diffResult, aligned, editorsReady, onlyShowDiffs, monaco])
+
+  useEffect(() => {
+    if (!monaco) return
+    const singleEditor = singleEditorRef.current
+    if (!singleEditor) return
+
+    const singleDecorations: monaco.editor.IModelDeltaDecoration[] = []
+
+    unifiedDiffView.types.forEach((type, i) => {
+      if (type === 'unchanged') return
+
+      const cls = type === 'added' ? 'added' : 'removed'
+      const line = i + 1
+
+      singleDecorations.push({
+        range: new monaco.Range(line, 1, line, 1),
+        options: {
+          isWholeLine: true,
+          className: `editor-line-${cls}`,
+          glyphMarginClassName: `editor-glyph-${cls}`,
+        },
+      })
+    })
+
+    if (singleDecorationsRef.current) singleDecorationsRef.current.clear()
+    singleDecorationsRef.current = singleEditor.createDecorationsCollection(singleDecorations)
+  }, [monaco, unifiedDiffView, singleEditorReady])
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      if (showDiffInSingleInput) {
+        singleEditorRef.current?.layout()
+        return
+      }
+
+      leftEditorRef.current?.layout()
+      rightEditorRef.current?.layout()
+    })
+  }, [showDiffInSingleInput])
 
   return (
     <section className="text-page">
-      <div className="text-header">
-        <h1>Text Compare</h1>
+      <div className="page-header">
+        <h1>{t('text.title')}</h1>
         <div className="stat-pills">
-          <span className="pill pill-added">+ {diffResult.stats.added} added</span>
-          <span className="pill pill-removed">- {diffResult.stats.removed} removed</span>
-          <span className="pill pill-changed">~ {diffResult.stats.changed} changed</span>
+          <span className="pill pill-added">{t('text.addedCount', { count: formatNumber(diffResult.stats.added) })}</span>
+          <span className="pill pill-removed">{t('text.removedCount', { count: formatNumber(diffResult.stats.removed) })}</span>
+          <span className="pill pill-changed">{t('text.changedCount', { count: formatNumber(diffResult.stats.changed) })}</span>
         </div>
       </div>
 
-      <div className="editor-grid">
+      <div
+        className="editor-grid"
+        style={showDiffInSingleInput ? { display: 'none' } : undefined}
+        aria-hidden={showDiffInSingleInput}
+      >
         <section
           className="editor-pane"
           onDragOver={(event) => event.preventDefault()}
@@ -434,20 +508,21 @@ export function TextPage() {
           }}
         >
           <header className="pane-header">
-            <strong>Left input</strong>
+            <strong>{t('text.leftInput')}</strong>
             <div className="pane-actions">
-              <button type="button" onClick={() => leftFileInputRef.current?.click()} aria-label="Open file for left input">
-                Open file
+              <button type="button" onClick={() => leftFileInputRef.current?.click()} aria-label={t('text.openFileLeftAria')}>
+                {t('common.openFile')}
               </button>
-              <button type="button" onClick={() => void handlePasteFromClipboard('left')} aria-label="Paste text into left input">
-                Paste text
+              <button type="button" onClick={() => void handlePasteFromClipboard('left')} aria-label={t('text.pasteLeftAria')}>
+                {t('text.pasteText')}
               </button>
-              <button type="button" onClick={() => void handleCopyPane('left')} aria-label="Copy left input text">
-                Copy left
+              <button type="button" onClick={() => void handleCopyPane('left')} aria-label={t('text.copyLeftAria')}>
+                {t('text.copyLeft')}
               </button>
             </div>
           </header>
           <Editor
+            key={`left-${onlyShowDiffs ? 'diff' : 'source'}`}
             height="300px"
             theme={theme === 'dark' ? 'vs-dark' : 'light'}
             language={session.options.language}
@@ -483,20 +558,21 @@ export function TextPage() {
           }}
         >
           <header className="pane-header">
-            <strong>Right input</strong>
+            <strong>{t('text.rightInput')}</strong>
             <div className="pane-actions">
-              <button type="button" onClick={() => rightFileInputRef.current?.click()} aria-label="Open file for right input">
-                Open file
+              <button type="button" onClick={() => rightFileInputRef.current?.click()} aria-label={t('text.openFileRightAria')}>
+                {t('common.openFile')}
               </button>
-              <button type="button" onClick={() => void handlePasteFromClipboard('right')} aria-label="Paste text into right input">
-                Paste text
+              <button type="button" onClick={() => void handlePasteFromClipboard('right')} aria-label={t('text.pasteRightAria')}>
+                {t('text.pasteText')}
               </button>
-              <button type="button" onClick={() => void handleCopyPane('right')} aria-label="Copy right input text">
-                Copy right
+              <button type="button" onClick={() => void handleCopyPane('right')} aria-label={t('text.copyRightAria')}>
+                {t('text.copyRight')}
               </button>
             </div>
           </header>
           <Editor
+            key={`right-${onlyShowDiffs ? 'diff' : 'source'}`}
             height="300px"
             theme={theme === 'dark' ? 'vs-dark' : 'light'}
             language={session.options.language}
@@ -525,7 +601,24 @@ export function TextPage() {
         </section>
       </div>
 
-      <div className="toolbar" role="toolbar" aria-label="Diff options">
+      {showDiffInSingleInput && (
+        <section className="editor-pane single-diff-pane">
+          <header className="pane-header">
+            <strong>{t('text.diffInput')}</strong>
+            {!unifiedDiffView.text && <span className="change-counter">{t('text.noContent')}</span>}
+          </header>
+          <Editor
+            height="300px"
+            theme={theme === 'dark' ? 'vs-dark' : 'light'}
+            language="plaintext"
+            value={unifiedDiffView.text}
+            options={singleEditorOptions}
+            onMount={handleSingleMount}
+          />
+        </section>
+      )}
+
+      <div className="toolbar" role="toolbar" aria-label={t('text.diffOptionsAria')}>
         <div className="toolbar-group">
           <label>
             <input
@@ -535,7 +628,7 @@ export function TextPage() {
                 setTextOptions({ realTime: event.target.checked })
               }}
             />
-            Real-time diff
+            {t('text.realTime')}
           </label>
           <label>
             <input
@@ -545,7 +638,7 @@ export function TextPage() {
                 setTextOptions({ disableWrap: event.target.checked })
               }}
             />
-            Disable line wrap
+            {t('text.disableWrap')}
           </label>
           <label>
             <input
@@ -555,25 +648,35 @@ export function TextPage() {
                 setOnlyShowDiffs(event.target.checked)
               }}
             />
-            Only show diffs
+            {t('text.onlyShowDiffs')}
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={showDiffInSingleInput}
+              onChange={(event) => {
+                setShowDiffInSingleInput(event.target.checked)
+              }}
+            />
+            {t('text.showDiffInOneInput')}
           </label>
           {!session.options.realTime && (
             <button type="button" onClick={applyManualCompare}>
-              Compare now
+              {t('text.compareNow')}
             </button>
           )}
         </div>
 
         <div className="toolbar-group">
           <label>
-            Syntax
+            {t('common.syntax')}
             <select
               value={session.options.language}
               onChange={(event) => {
                 setTextOptions({ language: event.target.value })
               }}
             >
-              {LANGUAGES.map((language) => (
+              {TEXT_LANGUAGES.map((language) => (
                 <option key={language} value={language}>
                   {language}
                 </option>
@@ -583,22 +686,22 @@ export function TextPage() {
         </div>
       </div>
 
-      <div className="action-bar" role="toolbar" aria-label="Actions">
+      <div className="action-bar" role="toolbar" aria-label={t('text.actionsAria')}>
         <div className="toolbar-group">
-          <button type="button" onClick={swapSides} aria-label="Swap left and right inputs">
-            Swap inputs
+          <button type="button" onClick={swapSides} aria-label={t('text.swapInputsAria')}>
+            {t('text.swapInputs')}
           </button>
-          <button type="button" onClick={handleClearSession} aria-label="Clear current session">
-            Clear session
+          <button type="button" onClick={handleClearSession} aria-label={t('text.clearSessionAria')}>
+            {t('text.clearSession')}
           </button>
-          <button type="button" onClick={handleSaveDoff} aria-label="Export session as .doff file">
-            Export .doff
+          <button type="button" onClick={handleSaveDoff} aria-label={t('text.exportDoffAria')}>
+            {t('text.exportDoff')}
           </button>
-          <button type="button" onClick={handleExportHtml} aria-label="Export diff as HTML file">
-            Export HTML
+          <button type="button" onClick={handleExportHtml} aria-label={t('text.exportHtmlAria')}>
+            {t('text.exportHtml')}
           </button>
-          <button type="button" onClick={() => doffFileInputRef.current?.click()} aria-label="Load .doff session file">
-            Load .doff
+          <button type="button" onClick={() => doffFileInputRef.current?.click()} aria-label={t('text.loadDoffAria')}>
+            {t('text.loadDoff')}
           </button>
           <input
             ref={doffFileInputRef}

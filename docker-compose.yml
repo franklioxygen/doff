@@ -1,0 +1,11 @@
+services:
+  doff:
+    image: ghcr.io/franklioxygen/doff:latest
+    pull_policy: always
+    container_name: doff
+    ports:
+      - "5560:80"
+    restart: unless-stopped
+    # doff is a fully client-side app served as static files via nginx.
+    # No volumes or environment variables are needed — all data stays
+    # in the user's browser (localStorage / IndexedDB).

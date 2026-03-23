@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useSessionStore } from '../../store/sessionStore'
 import { computeDiff } from '../text/textDiff'
 import type { PdfPage, PdfDocInfo } from '../../store/sessionStore'
+import { useI18n } from '../../i18n'
 import * as pdfjsLib from 'pdfjs-dist'
 import type { TextItem } from 'pdfjs-dist/types/src/display/api'
 
@@ -56,6 +57,7 @@ type DropZoneProps = {
 }
 
 const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
+  const { t, formatNumber } = useI18n()
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -78,16 +80,16 @@ const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
 
   return (
     <div className={`drop-zone ${dragging ? 'drop-zone-active' : ''} ${doc ? 'drop-zone-filled' : ''}`}>
-      {loading && <div className="dz-empty"><p>Loading PDF…</p></div>}
+      {loading && <div className="dz-empty"><p>{t('documents.loadingPdf')}</p></div>}
       {!loading && doc ? (
         <div className="dz-preview">
           <div className="dz-info">
             <span className="dz-name">{doc.name}</span>
-            <span className="dz-meta">{doc.numPages} page{doc.numPages !== 1 ? 's' : ''}</span>
+            <span className="dz-meta">{t('documents.pagesCount', { count: formatNumber(doc.numPages) })}</span>
           </div>
           <div className="dz-actions">
-            <button type="button" onClick={() => inputRef.current?.click()}>Replace</button>
-            <button type="button" onClick={onClear}>Clear</button>
+            <button type="button" onClick={() => inputRef.current?.click()}>{t('common.replace')}</button>
+            <button type="button" onClick={onClear}>{t('common.clear')}</button>
           </div>
         </div>
       ) : (
@@ -101,7 +103,7 @@ const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
             role="button"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter') inputRef.current?.click() }}
-            aria-label={`${label}: drop or click to select PDF`}
+            aria-label={t('documents.dropZoneAria', { label })}
           >
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -110,10 +112,10 @@ const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
               <line x1="16" y1="17" x2="8" y2="17" />
               <polyline points="10 9 9 9 8 9" />
             </svg>
-            <p>Drop PDF here</p>
-            <span>or click to browse</span>
+            <p>{t('documents.dropPdfHere')}</p>
+            <span>{t('images.orClickBrowse')}</span>
             <button type="button" onClick={(e) => { e.stopPropagation(); inputRef.current?.click() }}>
-              Open PDF
+              {t('documents.openPdf')}
             </button>
           </div>
         )
@@ -160,6 +162,7 @@ type PageDiffEntry = {
 }
 
 const PageList = ({ leftDoc, rightDoc, selectedPage, onSelectPage }: PageListProps) => {
+  const { t, formatNumber } = useI18n()
   const maxPages = Math.max(leftDoc?.numPages ?? 0, rightDoc?.numPages ?? 0)
   if (!leftDoc && !rightDoc) return null
 
@@ -205,10 +208,10 @@ const PageList = ({ leftDoc, rightDoc, selectedPage, onSelectPage }: PageListPro
   return (
     <div className="page-list">
       <div className="page-list-header">
-        <span>Page</span>
-        <span>Left</span>
-        <span>Right</span>
-        <span>Changes</span>
+        <span>{t('documents.page')}</span>
+        <span>{t('common.left')}</span>
+        <span>{t('common.right')}</span>
+        <span>{t('documents.changes')}</span>
       </div>
       {entries.map((entry) => (
         <button
@@ -222,8 +225,8 @@ const PageList = ({ leftDoc, rightDoc, selectedPage, onSelectPage }: PageListPro
           <span>{rightDoc?.pages[entry.pageNum - 1] ? '✓' : '–'}</span>
           <span>
             {entry.identical
-              ? 'Identical'
-              : `${entry.added > 0 ? `+${entry.added} ` : ''}${entry.removed > 0 ? `-${entry.removed} ` : ''}${entry.changed > 0 ? `~${entry.changed}` : ''}`}
+              ? t('documents.identical')
+              : `${entry.added > 0 ? `+${formatNumber(entry.added)} ` : ''}${entry.removed > 0 ? `-${formatNumber(entry.removed)} ` : ''}${entry.changed > 0 ? `~${formatNumber(entry.changed)}` : ''}`}
           </span>
         </button>
       ))}
@@ -240,6 +243,7 @@ type DiffViewProps = {
 }
 
 const DiffView = ({ leftDoc, rightDoc, selectedPage }: DiffViewProps) => {
+  const { t, formatNumber } = useI18n()
   const leftPage = leftDoc?.pages[selectedPage - 1]
   const rightPage = rightDoc?.pages[selectedPage - 1]
   const leftText = leftPage?.text ?? ''
@@ -265,15 +269,33 @@ const DiffView = ({ leftDoc, rightDoc, selectedPage }: DiffViewProps) => {
     <div className="doc-diff-panel">
       <div className="doc-diff-header">
         <div className="doc-diff-side">
-          <strong>Left — Page {selectedPage}{leftPage ? ` (${leftPage.width.toFixed(0)}×${leftPage.height.toFixed(0)})` : ''}</strong>
+          <strong>
+            {t('documents.leftPageHeader', {
+              page: formatNumber(selectedPage),
+              dimensions: leftPage ? ` (${leftPage.width.toFixed(0)}×${leftPage.height.toFixed(0)})` : '',
+            })}
+          </strong>
           {leftPage?.thumbnail && (
-            <img src={leftPage.thumbnail} alt={`Left page ${selectedPage} thumbnail`} className="page-thumb" />
+            <img
+              src={leftPage.thumbnail}
+              alt={t('documents.leftThumbnailAlt', { page: formatNumber(selectedPage) })}
+              className="page-thumb"
+            />
           )}
         </div>
         <div className="doc-diff-side">
-          <strong>Right — Page {selectedPage}{rightPage ? ` (${rightPage.width.toFixed(0)}×${rightPage.height.toFixed(0)})` : ''}</strong>
+          <strong>
+            {t('documents.rightPageHeader', {
+              page: formatNumber(selectedPage),
+              dimensions: rightPage ? ` (${rightPage.width.toFixed(0)}×${rightPage.height.toFixed(0)})` : '',
+            })}
+          </strong>
           {rightPage?.thumbnail && (
-            <img src={rightPage.thumbnail} alt={`Right page ${selectedPage} thumbnail`} className="page-thumb" />
+            <img
+              src={rightPage.thumbnail}
+              alt={t('documents.rightThumbnailAlt', { page: formatNumber(selectedPage) })}
+              className="page-thumb"
+            />
           )}
         </div>
       </div>
@@ -342,6 +364,7 @@ export function DocumentComparePage() {
   const documentSession = useSessionStore((s) => s.documentSession)
   const setDocumentSession = useSessionStore((s) => s.setDocumentSession)
   const clearDocumentSession = useSessionStore((s) => s.clearDocumentSession)
+  const { t, formatNumber } = useI18n()
 
   const { leftDoc, rightDoc, selectedPage } = documentSession
 
@@ -369,23 +392,23 @@ export function DocumentComparePage() {
   return (
     <div className="doc-page">
       <div className="page-header">
-        <h1>Document Compare</h1>
+        <h1>{t('documents.title')}</h1>
         <div className="stat-pills">
-          {leftDoc && <span className="pill">Left: {leftDoc.name} ({leftDoc.numPages}p)</span>}
-          {rightDoc && <span className="pill">Right: {rightDoc.name} ({rightDoc.numPages}p)</span>}
+          {leftDoc && <span className="pill">{t('documents.leftFileSummary', { name: leftDoc.name, pages: formatNumber(leftDoc.numPages) })}</span>}
+          {rightDoc && <span className="pill">{t('documents.rightFileSummary', { name: rightDoc.name, pages: formatNumber(rightDoc.numPages) })}</span>}
         </div>
       </div>
 
       {/* Drop zones */}
       <div className="image-dropzones">
         <PdfDropZone
-          label="Left PDF"
+          label={`${t('common.left')} PDF`}
           doc={leftDoc}
           onFile={(f) => handleFile('left', f)}
           onClear={() => handleClear('left')}
         />
         <PdfDropZone
-          label="Right PDF"
+          label={`${t('common.right')} PDF`}
           doc={rightDoc}
           onFile={(f) => handleFile('right', f)}
           onClear={() => handleClear('right')}
@@ -397,12 +420,15 @@ export function DocumentComparePage() {
         <div className="toolbar-group">
           {bothLoaded && (
             <span style={{ color: 'var(--text-subtle)' }}>
-              Comparing page {selectedPage} of {Math.max(leftDoc.numPages, rightDoc.numPages)}
+              {t('documents.comparingPageOf', {
+                page: formatNumber(selectedPage),
+                total: formatNumber(Math.max(leftDoc.numPages, rightDoc.numPages)),
+              })}
             </span>
           )}
         </div>
         <div className="toolbar-group">
-          <button type="button" onClick={clearDocumentSession}>Clear session</button>
+          <button type="button" onClick={clearDocumentSession}>{t('documents.clearSession')}</button>
         </div>
       </div>
 
@@ -428,7 +454,7 @@ export function DocumentComparePage() {
 
       {!leftDoc && !rightDoc && (
         <div className="viewer-placeholder">
-          <p>Load two PDF files above to compare them page by page.</p>
+          <p>{t('documents.loadTwoPdfs')}</p>
         </div>
       )}
     </div>
