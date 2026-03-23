@@ -13,9 +13,11 @@
     "build:desktop": "tsc -b && vite build --mode desktop",
     "lint": "eslint .",
     "preview": "vite preview",
+    "sync:versions": "node scripts/sync-versions.mjs",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "version": "npm run sync:versions && git add src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",
