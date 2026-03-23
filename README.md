@@ -16,6 +16,9 @@
   <a href="https://doff-franklioxygen.vercel.app"><strong>Live Demo</strong></a>
 </p>
 
+
+![Screenshot 2026-03-23 at 11 43 06 AM](https://github.com/user-attachments/assets/93ef493a-8a92-420b-924e-b9cbcd1dc551)
+
 ## Features
 
 - **Text diff** — side-by-side and unified views with intraline highlighting, powered by Monaco Editor.
