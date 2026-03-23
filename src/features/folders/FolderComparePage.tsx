@@ -199,7 +199,7 @@ function FolderPickerZone({
       for (const item of items) {
         // @ts-expect-error - getAsFileSystemHandle not in TS lib yet
         if (item.getAsFileSystemHandle) {
-          // @ts-expect-error
+          // @ts-expect-error getAsFileSystemHandle not in TS lib yet
           const handle = await item.getAsFileSystemHandle()
           if (handle?.kind === 'directory') {
             const result = await readFolderHandle(handle as FileSystemDirectoryHandle, handle.name)
