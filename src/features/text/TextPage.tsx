@@ -4,7 +4,10 @@ import {
   Button,
   Checkbox,
   Code,
+  CopyButton,
   Group,
+  Modal,
+  ScrollArea,
   Select,
   SegmentedControl,
   SimpleGrid,
@@ -14,17 +17,20 @@ import {
 import {
   IconAlertCircle,
   IconArrowsLeftRight,
+  IconCheck,
   IconCode,
   IconCopy,
   IconDownload,
   IconFileArrowLeft,
   IconFileArrowRight,
   IconFileTypeZip,
+  IconGitMerge,
   IconSparkles,
   IconTextPlus,
   IconTrash,
   IconUpload,
 } from '@tabler/icons-react'
+import { useDisclosure } from '@mantine/hooks'
 import Editor, { loader, useMonaco } from '@monaco-editor/react'
 import type { OnMount } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
@@ -141,6 +147,8 @@ export function TextPage() {
   const [showDiffInSingleInput, setShowDiffInSingleInput] = useState(
     session.options.viewMode === 'unified',
   )
+  const [gitDiffOpened, { open: openGitDiff, close: closeGitDiff }] = useDisclosure(false)
+  const [gitDiffText, setGitDiffText] = useState('')
 
   useEffect(() => {
     if (session.options.realTime) {
@@ -361,6 +369,85 @@ export function TextPage() {
       options: session.options,
     })
     setErrorMessage(null)
+  }
+
+  const handleGenerateGitDiff = () => {
+    const leftName = session.leftName ?? 'a'
+    const rightName = session.rightName ?? 'b'
+    const lines: string[] = []
+    lines.push(`--- ${leftName}`)
+    lines.push(`+++ ${rightName}`)
+
+    // Build hunks with context lines
+    const rows = diffResult.rows
+    let i = 0
+    while (i < rows.length) {
+      // Find next changed row
+      while (i < rows.length && rows[i].type === 'unchanged') i++
+      if (i >= rows.length) break
+
+      // Include up to 3 context lines before
+      const contextStart = Math.max(0, i - 3)
+      // Find end of this change block (including gaps <= 6 unchanged lines)
+      let end = i
+      while (end < rows.length) {
+        if (rows[end].type !== 'unchanged') {
+          end++
+          continue
+        }
+        // Check if there's another change within 6 lines
+        let nextChange = end
+        while (nextChange < rows.length && nextChange - end < 6 && rows[nextChange].type === 'unchanged') {
+          nextChange++
+        }
+        if (nextChange < rows.length && rows[nextChange].type !== 'unchanged') {
+          end = nextChange + 1
+        } else {
+          break
+        }
+      }
+      // Include up to 3 context lines after
+      const contextEnd = Math.min(rows.length, end + 3)
+
+      // Compute hunk header line numbers
+      let leftStart = 0
+      let leftCount = 0
+      let rightStart = 0
+      let rightCount = 0
+      for (let j = contextStart; j < contextEnd; j++) {
+        const row = rows[j]
+        if (j === contextStart) {
+          leftStart = row.leftLine ?? (row.rightLine ?? 1)
+          rightStart = row.rightLine ?? (row.leftLine ?? 1)
+        }
+        if (row.type === 'unchanged' || row.type === 'changed' || row.type === 'removed') {
+          leftCount++
+        }
+        if (row.type === 'unchanged' || row.type === 'changed' || row.type === 'added') {
+          rightCount++
+        }
+      }
+
+      lines.push(`@@ -${leftStart},${leftCount} +${rightStart},${rightCount} @@`)
+      for (let j = contextStart; j < contextEnd; j++) {
+        const row = rows[j]
+        if (row.type === 'unchanged') {
+          lines.push(` ${row.leftText}`)
+        } else if (row.type === 'removed') {
+          lines.push(`-${row.leftText}`)
+        } else if (row.type === 'added') {
+          lines.push(`+${row.rightText}`)
+        } else if (row.type === 'changed') {
+          lines.push(`-${row.leftText}`)
+          lines.push(`+${row.rightText}`)
+        }
+      }
+
+      i = contextEnd
+    }
+
+    setGitDiffText(lines.join('\n'))
+    openGitDiff()
   }
 
   const editorOptions = {
@@ -908,6 +995,15 @@ export function TextPage() {
               </Button>
               <Button
                 type="button"
+                variant="default"
+                leftSection={<IconGitMerge size={16} stroke={1.8} />}
+                onClick={handleGenerateGitDiff}
+                aria-label={t('text.gitDiffAria')}
+              >
+                {t('text.gitDiff')}
+              </Button>
+              <Button
+                type="button"
                 variant="light"
                 leftSection={<IconCode size={16} stroke={1.8} />}
                 onClick={() => doffFileInputRef.current?.click()}
@@ -941,6 +1037,32 @@ export function TextPage() {
           </Alert>
         )}
       </Stack>
+
+      <Modal
+        opened={gitDiffOpened}
+        onClose={closeGitDiff}
+        title={t('text.gitDiff')}
+        size="xl"
+      >
+        <Stack gap="sm">
+          <CopyButton value={gitDiffText}>
+            {({ copied, copy }) => (
+              <Button
+                variant={copied ? 'light' : 'default'}
+                leftSection={copied ? <IconCheck size={16} stroke={1.8} /> : <IconCopy size={16} stroke={1.8} />}
+                onClick={copy}
+              >
+                {copied ? t('text.copied') : t('text.copyToClipboard')}
+              </Button>
+            )}
+          </CopyButton>
+          <ScrollArea.Autosize mah="70vh">
+            <Code block style={{ whiteSpace: 'pre', fontSize: 12 }}>
+              {gitDiffText}
+            </Code>
+          </ScrollArea.Autosize>
+        </Stack>
+      </Modal>
     </section>
   )
 }

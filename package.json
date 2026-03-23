@@ -9,6 +9,7 @@
     "dev:desktop": "vite --mode desktop",
     "build": "npm run build:web",
     "build:web": "tsc -b && vite build --mode web",
+    "build:vercel": "npm run build:web && node scripts/inject-vercel-ga.mjs",
     "build:desktop": "tsc -b && vite build --mode desktop",
     "lint": "eslint .",
     "preview": "vite preview",

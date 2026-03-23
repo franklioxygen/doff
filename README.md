@@ -35,9 +35,11 @@
 
 ## Privacy
 
-- No account, cloud backend, analytics, or telemetry.
-- All processing happens locally in your browser.
+- No account and no cloud backend.
+- All processing happens locally in your browser or desktop app.
 - Files never leave your machine.
+- The official Vercel-hosted live demo, including the PWA installed from that deployment, enables Google Analytics only on the production deployment to measure aggregate traffic.
+- Demo purpose Google Analytics is not embedded in the app source code and is not included in desktop installers, Docker/self-hosted deployments, or local development builds.
 
 ## Getting Started
 
@@ -48,6 +50,8 @@ doff can be used in two ways: as a **standalone app** installed directly on your
 Download the latest installer for your platform from the [Releases](https://github.com/franklioxygen/doff/releases) page. Available for macOS, Windows, and Linux.
 
 You can also visit the [Live Demo](https://doff-franklioxygen.vercel.app) and install it as a Progressive Web App from your browser.
+
+Note: the official Vercel-hosted live demo enable Google Analytics only on the production deployment. Desktop installers **do not include** Google Analytics.
 
 ### Container Deployment (Docker)
 
@@ -62,6 +66,8 @@ docker compose up -d
 ```
 
 Then open [http://localhost:5560](http://localhost:5560).
+
+Docker and other self-hosted deployments **do not includ** Google Analytics.
 
 ### Build from Source
 
