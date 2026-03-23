@@ -58,14 +58,5 @@ git tag "v$NEW_VERSION"
 git push origin main
 git push origin "v$NEW_VERSION"
 
-# Deploy to Vercel production
-echo "🌐 Deploying to Vercel..."
-VERCEL_URL=$(vercel --prod --yes 2>&1 | grep -oE 'https://doff-[a-z0-9]+-franklioxygens-projects\.vercel\.app' | head -1)
-if [ -n "$VERCEL_URL" ]; then
-  vercel alias set "$VERCEL_URL" doff-franklioxygen.vercel.app
-  echo "✅ Vercel deployed: https://doff-franklioxygen.vercel.app"
-else
-  echo "⚠️  Vercel deployment may have failed. Check manually."
-fi
-
-echo "🚀 Release v$NEW_VERSION tagged, pushed, and deployed."
+echo "🚀 Release v$NEW_VERSION tagged and pushed."
+echo "   GitHub Actions will now handle: Docker, Tauri, and Vercel deployments."
