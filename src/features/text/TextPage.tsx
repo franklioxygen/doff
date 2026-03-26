@@ -645,7 +645,7 @@ export function TextPage() {
                     <Text fw={600}>{t('text.leftInput')}</Text>
                     {session.leftName && <Code>{session.leftName}</Code>}
                   </div>
-                  <Group gap="xs" className="pane-actions">
+                  <Group gap="sm" className="pane-actions">
                     <Button
                       type="button"
                       size="compact-md"
@@ -723,7 +723,7 @@ export function TextPage() {
                     <Text fw={600}>{t('text.rightInput')}</Text>
                     {session.rightName && <Code>{session.rightName}</Code>}
                   </div>
-                  <Group gap="xs" className="pane-actions">
+                  <Group gap="sm" className="pane-actions">
                     <Button
                       type="button"
                       size="compact-md"
@@ -793,7 +793,7 @@ export function TextPage() {
         {!showDiffInSingleInput && useTabbedLayout && (
           <SurfaceCard className="editor-surface" padded={false}>
             <Tabs value={activeTab} onChange={setActiveTab}>
-              <Tabs.List>
+              <Tabs.List px="md">
                 <Tabs.Tab value="left">{t('text.leftInput')}{session.leftName ? ` — ${session.leftName}` : ''}</Tabs.Tab>
                 <Tabs.Tab value="right">{t('text.rightInput')}{session.rightName ? ` — ${session.rightName}` : ''}</Tabs.Tab>
               </Tabs.List>
@@ -808,7 +808,7 @@ export function TextPage() {
                 >
                   <header className="pane-header">
                     <div className="pane-title-wrap" />
-                    <Group gap="xs" className="pane-actions">
+                    <Group gap="sm" className="pane-actions">
                       <Button
                         type="button"
                         size="compact-md"
@@ -883,7 +883,7 @@ export function TextPage() {
                 >
                   <header className="pane-header">
                     <div className="pane-title-wrap" />
-                    <Group gap="xs" className="pane-actions">
+                    <Group gap="sm" className="pane-actions">
                       <Button
                         type="button"
                         size="compact-md"
