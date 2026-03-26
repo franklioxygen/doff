@@ -12,6 +12,7 @@ import {
   SegmentedControl,
   SimpleGrid,
   Stack,
+  Tabs,
   Text,
 } from '@mantine/core'
 import {
@@ -144,6 +145,8 @@ export function TextPage() {
   const [editorsReady, setEditorsReady] = useState(0)
   const [singleEditorReady, setSingleEditorReady] = useState(0)
   const [onlyShowDiffs, setOnlyShowDiffs] = useState(false)
+  const [useTabbedLayout, setUseTabbedLayout] = useState(false)
+  const [activeTab, setActiveTab] = useState<string | null>('left')
   const [showDiffInSingleInput, setShowDiffInSingleInput] = useState(
     session.options.viewMode === 'unified',
   )
@@ -604,7 +607,7 @@ export function TextPage() {
       leftEditorRef.current?.layout()
       rightEditorRef.current?.layout()
     })
-  }, [showDiffInSingleInput])
+  }, [showDiffInSingleInput, useTabbedLayout, activeTab])
 
   return (
     <section className="text-page">
@@ -627,8 +630,8 @@ export function TextPage() {
           )}
         />
 
-        {!showDiffInSingleInput && (
-          <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg" aria-hidden={showDiffInSingleInput}>
+        {!showDiffInSingleInput && !useTabbedLayout && (
+          <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
             <SurfaceCard className="editor-surface" padded={false}>
               <div
                 className="editor-pane"
@@ -787,6 +790,167 @@ export function TextPage() {
           </SimpleGrid>
         )}
 
+        {!showDiffInSingleInput && useTabbedLayout && (
+          <SurfaceCard className="editor-surface" padded={false}>
+            <Tabs value={activeTab} onChange={setActiveTab}>
+              <Tabs.List>
+                <Tabs.Tab value="left">{t('text.leftInput')}{session.leftName ? ` — ${session.leftName}` : ''}</Tabs.Tab>
+                <Tabs.Tab value="right">{t('text.rightInput')}{session.rightName ? ` — ${session.rightName}` : ''}</Tabs.Tab>
+              </Tabs.List>
+
+              <Tabs.Panel value="left">
+                <div
+                  className="editor-pane"
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    void handleDrop(event, 'left').catch(() => {})
+                  }}
+                >
+                  <header className="pane-header">
+                    <div className="pane-title-wrap" />
+                    <Group gap="xs" className="pane-actions">
+                      <Button
+                        type="button"
+                        size="compact-md"
+                        variant="light"
+                        leftSection={<IconFileArrowLeft size={14} stroke={1.8} />}
+                        onClick={() => leftFileInputRef.current?.click()}
+                        aria-label={t('text.openFileLeftAria')}
+                      >
+                        {t('common.openFile')}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="compact-md"
+                        variant="subtle"
+                        leftSection={<IconUpload size={14} stroke={1.8} />}
+                        onClick={() => void handlePasteFromClipboard('left')}
+                        aria-label={t('text.pasteLeftAria')}
+                      >
+                        {t('text.pasteText')}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="compact-md"
+                        variant="subtle"
+                        leftSection={<IconCopy size={14} stroke={1.8} />}
+                        onClick={() => void handleCopyPane('left')}
+                        aria-label={t('text.copyLeftAria')}
+                      >
+                        {t('text.copyLeft')}
+                      </Button>
+                    </Group>
+                  </header>
+                  <div className="editor-host">
+                    <Editor
+                      key={`left-tabbed-${onlyShowDiffs ? 'diff' : 'source'}`}
+                      height="420px"
+                      theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                      language={session.options.language}
+                      value={onlyShowDiffs ? aligned.leftText : session.leftText}
+                      options={editorOptions}
+                      onMount={handleLeftMount}
+                      onChange={(value) => {
+                        if (onlyShowDiffs) return
+                        const v = value ?? ''
+                        if (v.length - prevLeftLen.current > 10) {
+                          autoDetect(v)
+                        }
+                        prevLeftLen.current = v.length
+                        setLeftText(v)
+                      }}
+                    />
+                  </div>
+                  <input
+                    ref={leftFileInputRef}
+                    type="file"
+                    hidden
+                    onChange={(event) => {
+                      void handleOpenFile('left', event.target.files?.[0])
+                      event.target.value = ''
+                    }}
+                  />
+                </div>
+              </Tabs.Panel>
+
+              <Tabs.Panel value="right">
+                <div
+                  className="editor-pane"
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    void handleDrop(event, 'right').catch(() => {})
+                  }}
+                >
+                  <header className="pane-header">
+                    <div className="pane-title-wrap" />
+                    <Group gap="xs" className="pane-actions">
+                      <Button
+                        type="button"
+                        size="compact-md"
+                        variant="light"
+                        leftSection={<IconFileArrowRight size={14} stroke={1.8} />}
+                        onClick={() => rightFileInputRef.current?.click()}
+                        aria-label={t('text.openFileRightAria')}
+                      >
+                        {t('common.openFile')}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="compact-md"
+                        variant="subtle"
+                        leftSection={<IconUpload size={14} stroke={1.8} />}
+                        onClick={() => void handlePasteFromClipboard('right')}
+                        aria-label={t('text.pasteRightAria')}
+                      >
+                        {t('text.pasteText')}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="compact-md"
+                        variant="subtle"
+                        leftSection={<IconCopy size={14} stroke={1.8} />}
+                        onClick={() => void handleCopyPane('right')}
+                        aria-label={t('text.copyRightAria')}
+                      >
+                        {t('text.copyRight')}
+                      </Button>
+                    </Group>
+                  </header>
+                  <div className="editor-host">
+                    <Editor
+                      key={`right-tabbed-${onlyShowDiffs ? 'diff' : 'source'}`}
+                      height="420px"
+                      theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                      language={session.options.language}
+                      value={onlyShowDiffs ? aligned.rightText : session.rightText}
+                      options={editorOptions}
+                      onMount={handleRightMount}
+                      onChange={(value) => {
+                        if (onlyShowDiffs) return
+                        const v = value ?? ''
+                        if (v.length - prevRightLen.current > 10) {
+                          autoDetect(v)
+                        }
+                        prevRightLen.current = v.length
+                        setRightText(v)
+                      }}
+                    />
+                  </div>
+                  <input
+                    ref={rightFileInputRef}
+                    type="file"
+                    hidden
+                    onChange={(event) => {
+                      void handleOpenFile('right', event.target.files?.[0])
+                      event.target.value = ''
+                    }}
+                  />
+                </div>
+              </Tabs.Panel>
+            </Tabs>
+          </SurfaceCard>
+        )}
+
         {showDiffInSingleInput && (
           <SurfaceCard className="editor-surface" padded={false}>
             <section className="editor-pane single-diff-pane">
@@ -885,6 +1049,13 @@ export function TextPage() {
                 label={t('text.onlyShowDiffs')}
                 onChange={(event) => {
                   setOnlyShowDiffs(event.currentTarget.checked)
+                }}
+              />
+              <Checkbox
+                checked={useTabbedLayout}
+                label={t('text.tabbedLayout')}
+                onChange={(event) => {
+                  setUseTabbedLayout(event.currentTarget.checked)
                 }}
               />
               {!session.options.realTime && (
