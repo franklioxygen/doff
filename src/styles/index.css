@@ -863,6 +863,11 @@ textarea {
   .footer-row {
     align-items: flex-start;
     flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .app-footer {
+    padding: 0.35rem 0;
   }
 
   .editor-host,
