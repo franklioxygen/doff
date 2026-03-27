@@ -144,8 +144,10 @@ export function TextPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [editorsReady, setEditorsReady] = useState(0)
   const [singleEditorReady, setSingleEditorReady] = useState(0)
-  const [onlyShowDiffs, setOnlyShowDiffs] = useState(false)
-  const [useTabbedLayout, setUseTabbedLayout] = useState(false)
+  const onlyShowDiffs = useSessionStore((state) => state.onlyShowDiffs)
+  const setOnlyShowDiffs = useSessionStore((state) => state.setOnlyShowDiffs)
+  const useTabbedLayout = useSessionStore((state) => state.useTabbedLayout)
+  const setUseTabbedLayout = useSessionStore((state) => state.setUseTabbedLayout)
   const [activeTab, setActiveTab] = useState<string | null>('left')
   const [showDiffInSingleInput, setShowDiffInSingleInput] = useState(
     session.options.viewMode === 'unified',
@@ -374,7 +376,7 @@ export function TextPage() {
     setErrorMessage(null)
   }
 
-  const handleGenerateGitDiff = () => {
+  const generateGitDiffText = () => {
     const leftName = session.leftName ?? 'a'
     const rightName = session.rightName ?? 'b'
     const lines: string[] = []
@@ -449,8 +451,18 @@ export function TextPage() {
       i = contextEnd
     }
 
-    setGitDiffText(lines.join('\n'))
+    return lines.join('\n')
+  }
+
+  const handleGenerateGitDiff = () => {
+    const text = generateGitDiffText()
+    setGitDiffText(text)
     openGitDiff()
+  }
+
+  const handleCopyGitDiff = async () => {
+    const text = generateGitDiffText()
+    await navigator.clipboard.writeText(text)
   }
 
   const editorOptions = {
@@ -459,6 +471,7 @@ export function TextPage() {
     fontSize: 13,
     automaticLayout: true,
     scrollBeyondLastLine: false,
+    scrollbar: { alwaysConsumeMouseWheel: false },
     wordWrap: (session.options.disableWrap ? 'off' : 'on') as 'on' | 'off',
     glyphMargin: true,
     readOnly: onlyShowDiffs,
@@ -631,7 +644,7 @@ export function TextPage() {
         />
 
         {!showDiffInSingleInput && !useTabbedLayout && (
-          <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
             <SurfaceCard className="editor-surface" padded={false}>
               <div
                 className="editor-pane"
@@ -974,7 +987,7 @@ export function TextPage() {
           </SurfaceCard>
         )}
 
-        <SimpleGrid cols={{ base: 1, xl: 3 }} spacing="lg">
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
           <SurfaceCard
             title={t('text.diffOptionsAria')}
             description={session.options.realTime ? undefined : t('text.compareNow')}
@@ -1127,7 +1140,7 @@ export function TextPage() {
             description={busyMessage ?? errorMessage ?? undefined}
             className="control-surface"
           >
-            <Stack gap="sm">
+            <SimpleGrid cols={{ base: 2, sm: 1 }} spacing="sm">
               <Button
                 type="button"
                 variant="light"
@@ -1175,6 +1188,15 @@ export function TextPage() {
               </Button>
               <Button
                 type="button"
+                variant="default"
+                leftSection={<IconCopy size={16} stroke={1.8} />}
+                onClick={() => void handleCopyGitDiff()}
+                aria-label={t('text.copyGitDiffAria')}
+              >
+                {t('text.copyGitDiff')}
+              </Button>
+              <Button
+                type="button"
                 variant="light"
                 leftSection={<IconCode size={16} stroke={1.8} />}
                 onClick={() => doffFileInputRef.current?.click()}
@@ -1192,7 +1214,7 @@ export function TextPage() {
                   event.target.value = ''
                 }}
               />
-            </Stack>
+            </SimpleGrid>
           </SurfaceCard>
         </SimpleGrid>
 

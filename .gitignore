@@ -32,3 +32,4 @@ dist-ssr
 
 # Documentation
 docs/*.env.development
+.claude/*

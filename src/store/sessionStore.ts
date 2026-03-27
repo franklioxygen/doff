@@ -100,6 +100,8 @@ type SessionState = {
   theme: 'light' | 'dark'
   locale: SupportedLocale
   rememberTextSession: boolean
+  onlyShowDiffs: boolean
+  useTabbedLayout: boolean
   textDefaults: TextDiffOptions
   textSession: TextSession
   imageSession: ImageSession
@@ -110,6 +112,8 @@ type SessionState = {
   toggleTheme: () => void
   setLocale: (locale: SupportedLocale) => void
   setRememberTextSession: (remember: boolean) => void
+  setOnlyShowDiffs: (value: boolean) => void
+  setUseTabbedLayout: (value: boolean) => void
   setTextDefaults: (partial: Partial<TextDiffOptions>) => void
   applyTextDefaultsToTextSession: () => void
   resetTextDefaults: () => void
@@ -160,6 +164,8 @@ const createInitialState = () => ({
   theme: getPreferredTheme() as 'light' | 'dark',
   locale: getPreferredLocale(),
   rememberTextSession: true,
+  onlyShowDiffs: false,
+  useTabbedLayout: false,
   textDefaults: { ...defaultTextOptions },
   textSession: createDefaultSession(defaultTextOptions),
   imageSession: {
@@ -200,6 +206,8 @@ export const useSessionStore = create<SessionState>()(
         set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
       setLocale: (locale) => set({ locale }),
       setRememberTextSession: (rememberTextSession) => set({ rememberTextSession }),
+      setOnlyShowDiffs: (onlyShowDiffs) => set({ onlyShowDiffs }),
+      setUseTabbedLayout: (useTabbedLayout) => set({ useTabbedLayout }),
       setTextDefaults: (partial) =>
         set((state) => ({
           textDefaults: { ...state.textDefaults, ...partial },
@@ -302,6 +310,8 @@ export const useSessionStore = create<SessionState>()(
         theme: state.theme,
         locale: state.locale,
         rememberTextSession: state.rememberTextSession,
+        onlyShowDiffs: state.onlyShowDiffs,
+        useTabbedLayout: state.useTabbedLayout,
         textDefaults: state.textDefaults,
         ...(state.rememberTextSession ? { textSession: state.textSession } : {}),
       }),

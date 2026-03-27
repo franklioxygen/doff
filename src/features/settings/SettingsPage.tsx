@@ -74,7 +74,7 @@ export function SettingsPage() {
           )}
         />
 
-        <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
           <SurfaceCard
             title={t('settings.appearanceTitle')}
             description={t('settings.appearanceDescription')}

@@ -580,7 +580,7 @@ export function ImageComparePage() {
           )}
         />
 
-        <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
           <SurfaceCard title={t('images.leftImage')} className="upload-surface">
             <DropZone
               label={t('images.leftImage')}
@@ -688,7 +688,7 @@ export function ImageComparePage() {
         </SurfaceCard>
 
         {bothLoaded && (
-          <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
             <SurfaceCard title={leftImage!.name} className="side-panel">
               <ViewCanvas image={leftImage} />
             </SurfaceCard>

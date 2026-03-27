@@ -216,6 +216,23 @@ textarea {
   min-width: max-content;
 }
 
+@media (min-width: 48em) and (max-width: 75rem) {
+  .shell-nav-link .mantine-NavLink-body {
+    display: none;
+  }
+
+  .shell-nav-link .mantine-NavLink-section {
+    margin: 0;
+  }
+
+  .shell-nav-link {
+    min-width: auto;
+    width: auto;
+    padding: 8px 10px;
+    justify-content: center;
+  }
+}
+
 .shell-nav-link[data-active] {
   background: rgba(73, 180, 111, 0.16);
   color: var(--app-text);
@@ -276,7 +293,7 @@ textarea {
 
 .page-hero {
   position: relative;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .surface-card-header-compact {
@@ -332,6 +349,7 @@ textarea {
 .doc-diff-surface,
 .about-card {
   height: 100%;
+  min-width: 0;
 }
 
 .upload-drop-zone {
@@ -413,6 +431,7 @@ textarea {
 .editor-pane {
   display: flex;
   min-height: 100%;
+  min-width: 0;
   flex-direction: column;
 }
 
@@ -439,6 +458,8 @@ textarea {
 
 .editor-host {
   min-height: 26.25rem;
+  width: 0;
+  min-width: 100%;
   border-radius: 0 0 1.05rem 1.05rem;
   background: color-mix(in srgb, var(--app-surface-strong) 88%, transparent);
   overflow: hidden;
@@ -833,7 +854,7 @@ textarea {
   }
 }
 
-@media (max-width: 62rem) {
+@media (max-width: 48rem) {
   .pane-header,
   .upload-preview {
     flex-direction: column;
@@ -849,9 +870,7 @@ textarea {
     grid-template-columns: 2.75rem repeat(2, minmax(3.8rem, 1fr)) minmax(7rem, 2fr);
     font-size: 0.85rem;
   }
-}
 
-@media (max-width: 48rem) {
   .app-main-container {
     padding: 1rem 0.75rem 1.5rem;
   }

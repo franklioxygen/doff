@@ -471,7 +471,7 @@ export function SpreadsheetComparePage() {
           icon={<IconFileSpreadsheet size={26} stroke={1.8} />}
         />
 
-        <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
           <SurfaceCard title={t('spreadsheets.leftFile')} className="upload-surface">
             <DropZone inputId="spreadsheet-left-file" label={t('spreadsheets.leftFile')} file={leftFile} onFile={handleLeftFile} />
           </SurfaceCard>
@@ -513,7 +513,7 @@ export function SpreadsheetComparePage() {
           )}
         >
           {leftFile && rightFile && (
-            <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
               <SheetSelector sheets={leftFile.sheets} selected={leftSheet} side="left" onSelect={handleLeftSheet} />
               <SheetSelector sheets={rightFile.sheets} selected={rightSheet} side="right" onSelect={handleRightSheet} />
             </SimpleGrid>

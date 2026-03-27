@@ -38,7 +38,7 @@ export function AboutPrivacyPage() {
         icon={<IconShieldLock size={26} stroke={1.8} />}
       />
 
-      <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg" mt="lg">
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" mt="lg">
         {sections.map((section) => (
           <SurfaceCard key={section.title} title={section.title} className="about-card">
             {section.body}

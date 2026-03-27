@@ -76,7 +76,7 @@ export function AppLayout() {
                 </Stack>
               </Group>
 
-              <Group gap="xs" visibleFrom="md" wrap="nowrap" aria-label={t('app.primaryNav')}>
+              <Group gap="xs" visibleFrom="sm" wrap="nowrap" aria-label={t('app.primaryNav')}>
               {NAV_ITEMS.map((item) => (
                 <NavLink
                   key={item.to}
@@ -107,7 +107,7 @@ export function AppLayout() {
                   )}
                 </ActionIcon>
                 <Burger
-                  hiddenFrom="md"
+                  hiddenFrom="sm"
                   opened={opened}
                   onClick={toggle}
                   aria-label={t('app.primaryNav')}
@@ -123,7 +123,8 @@ export function AppLayout() {
           title="doff"
           padding="md"
           size="sm"
-          hiddenFrom="md"
+          position="right"
+          hiddenFrom="sm"
         >
           <Stack gap="xs">
             {NAV_ITEMS.map((item) => (
