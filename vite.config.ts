@@ -6,7 +6,14 @@ import packageJson from "./package.json";
 export default defineConfig(({ mode }) => {
   const isDesktop = mode === "desktop";
 
+  const allowedHosts = (process.env.VITE_ALLOWED_HOSTS || "")
+    .split(",")
+    .filter(Boolean);
+
   return {
+    server: {
+      allowedHosts,
+    },
     define: {
       "import.meta.env.VITE_APP_VERSION": JSON.stringify(packageJson.version),
       "import.meta.env.VITE_BUILD_DATE": JSON.stringify(
