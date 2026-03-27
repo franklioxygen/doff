@@ -1,6 +1,6 @@
 [package]
 name = "doff"
-version = "0.1.10"
+version = "0.1.11"
 description = "Local-first, offline-ready diff workspace"
 authors = ["franklioxygen"]
 license = "MIT"
