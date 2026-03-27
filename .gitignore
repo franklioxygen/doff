@@ -31,4 +31,4 @@ dist-ssr
 .cursor
 
 # Documentation
-docs/*
+docs/*.env.development
