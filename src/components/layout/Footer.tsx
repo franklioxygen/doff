@@ -1,5 +1,6 @@
 import { Anchor, Group, Text } from '@mantine/core'
 import { IconBrandGithub } from '@tabler/icons-react'
+import { DOFF_GITHUB_URL, FooterVersionInfo } from './FooterVersionInfo'
 
 export function Footer() {
   return (
@@ -7,7 +8,7 @@ export function Footer() {
       <div className="footer-row">
         <Group gap="sm" wrap="wrap" className="footer-meta">
           <Anchor
-            href="https://github.com/franklioxygen/doff"
+            href={DOFF_GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="footer-link"
@@ -15,13 +16,7 @@ export function Footer() {
             <IconBrandGithub size={16} stroke={1.8} />
             doff
           </Anchor>
-          <Text
-            size="sm"
-            className="footer-version"
-            title={`Built on ${new Date(import.meta.env.VITE_BUILD_DATE).toLocaleString()}`}
-          >
-            v{import.meta.env.VITE_APP_VERSION}
-          </Text>
+          <FooterVersionInfo />
         </Group>
         <Text size="sm" className="footer-credit">
           Created by franklioxygen

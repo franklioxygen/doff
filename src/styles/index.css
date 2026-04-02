@@ -287,6 +287,18 @@ textarea {
   font-weight: 600;
 }
 
+.footer-version-group {
+  gap: 0.4rem;
+}
+
+.footer-update-chip {
+  --badge-height: 18px;
+  --badge-padding-x: 8px;
+  cursor: pointer;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .footer-credit {
   white-space: nowrap;
 }
