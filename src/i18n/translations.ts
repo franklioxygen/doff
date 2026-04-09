@@ -10,6 +10,7 @@ const en = {
   'app.loadingWorkspaceBody': 'Preparing this compare view and its local tools.',
 
   'nav.text': 'Text',
+  'nav.formatter': 'Formatter',
   'nav.images': 'Images',
   'nav.documents': 'Documents',
   'nav.spreadsheets': 'Spreadsheets',
@@ -241,6 +242,23 @@ const en = {
   'folders.comparingFolders': 'Comparing: {left} ↔ {right}',
   'folders.noFolders': 'No folders loaded',
   'folders.emptyDescription': 'Pick two folders above to compare their contents.',
+
+  'formatter.title': 'Formatter',
+  'formatter.description': 'Paste text and doff auto-detects its language. Click Format to pretty-print or Copy to send the result back to your clipboard.',
+  'formatter.input': 'Input',
+  'formatter.languageSelectAria': 'Select language',
+  'formatter.autoDetected': 'auto-detected',
+  'formatter.paste': 'Paste',
+  'formatter.format': 'Format',
+  'formatter.copy': 'Copy',
+  'formatter.copied': 'Copied',
+  'formatter.clear': 'Clear',
+  'formatter.placeholder': 'Paste JSON, HTML, CSS, XML, JavaScript, or other text here to get started.',
+  'formatter.formatFailed': 'Failed to format the input.',
+  'formatter.formatFailedWith': 'Failed to format: {error}',
+  'formatter.unsupported': 'No formatter is available for {language}.',
+  'formatter.copyFailed': 'Copy failed. Clipboard write is not available.',
+  'formatter.pasteFailed': 'Paste failed. Clipboard read is not available.',
 } as const
 
 type TranslationDictionary = Record<keyof typeof en, string>
@@ -255,6 +273,7 @@ const es: TranslationDictionary = {
   'app.loadingWorkspaceBody': 'Preparando esta vista de comparación y sus herramientas locales.',
 
   'nav.text': 'Texto',
+  'nav.formatter': 'Formateador',
   'nav.images': 'Imágenes',
   'nav.documents': 'Documentos',
   'nav.spreadsheets': 'Hojas',
@@ -486,6 +505,23 @@ const es: TranslationDictionary = {
   'folders.comparingFolders': 'Comparando: {left} ↔ {right}',
   'folders.noFolders': 'No hay carpetas cargadas',
   'folders.emptyDescription': 'Elige dos carpetas arriba para comparar su contenido.',
+
+  'formatter.title': 'Formateador',
+  'formatter.description': 'Pega texto y doff detectará automáticamente su lenguaje. Haz clic en Formatear para embellecerlo o Copiar para enviarlo al portapapeles.',
+  'formatter.input': 'Entrada',
+  'formatter.languageSelectAria': 'Seleccionar lenguaje',
+  'formatter.autoDetected': 'detectado automáticamente',
+  'formatter.paste': 'Pegar',
+  'formatter.format': 'Formatear',
+  'formatter.copy': 'Copiar',
+  'formatter.copied': 'Copiado',
+  'formatter.clear': 'Limpiar',
+  'formatter.placeholder': 'Pega JSON, HTML, CSS, XML, JavaScript u otro texto aquí para comenzar.',
+  'formatter.formatFailed': 'No se pudo formatear la entrada.',
+  'formatter.formatFailedWith': 'Error al formatear: {error}',
+  'formatter.unsupported': 'No hay formateador disponible para {language}.',
+  'formatter.copyFailed': 'Error al copiar. La escritura del portapapeles no está disponible.',
+  'formatter.pasteFailed': 'Error al pegar. La lectura del portapapeles no está disponible.',
 }
 
 const fr: TranslationDictionary = {
@@ -498,6 +534,7 @@ const fr: TranslationDictionary = {
   'app.loadingWorkspaceBody': 'Préparation de cette vue de comparaison et de ses outils locaux.',
 
   'nav.text': 'Texte',
+  'nav.formatter': 'Formateur',
   'nav.images': 'Images',
   'nav.documents': 'Documents',
   'nav.spreadsheets': 'Tableurs',
@@ -729,6 +766,23 @@ const fr: TranslationDictionary = {
   'folders.comparingFolders': 'Comparaison : {left} \u2194 {right}',
   'folders.noFolders': 'Aucun dossier charg\u00e9',
   'folders.emptyDescription': 'Choisissez deux dossiers ci-dessus pour comparer leur contenu.',
+
+  'formatter.title': 'Formateur',
+  'formatter.description': 'Collez du texte et doff d\u00e9tecte automatiquement son langage. Cliquez sur Formater pour l\u2019embellir ou sur Copier pour le renvoyer au presse-papiers.',
+  'formatter.input': 'Entr\u00e9e',
+  'formatter.languageSelectAria': 'S\u00e9lectionner le langage',
+  'formatter.autoDetected': 'd\u00e9tect\u00e9 automatiquement',
+  'formatter.paste': 'Coller',
+  'formatter.format': 'Formater',
+  'formatter.copy': 'Copier',
+  'formatter.copied': 'Copi\u00e9',
+  'formatter.clear': 'Effacer',
+  'formatter.placeholder': 'Collez ici du JSON, HTML, CSS, XML, JavaScript ou un autre texte pour commencer.',
+  'formatter.formatFailed': '\u00c9chec du formatage de l\u2019entr\u00e9e.',
+  'formatter.formatFailedWith': '\u00c9chec du formatage : {error}',
+  'formatter.unsupported': 'Aucun formateur disponible pour {language}.',
+  'formatter.copyFailed': '\u00c9chec de la copie. L\u2019\u00e9criture dans le presse-papiers est indisponible.',
+  'formatter.pasteFailed': '\u00c9chec du collage. La lecture du presse-papiers est indisponible.',
 }
 
 const de: TranslationDictionary = {
@@ -741,6 +795,7 @@ const de: TranslationDictionary = {
   'app.loadingWorkspaceBody': 'Diese Vergleichsansicht und ihre lokalen Werkzeuge werden vorbereitet.',
 
   'nav.text': 'Text',
+  'nav.formatter': 'Formatierer',
   'nav.images': 'Bilder',
   'nav.documents': 'Dokumente',
   'nav.spreadsheets': 'Tabellen',
@@ -972,6 +1027,23 @@ const de: TranslationDictionary = {
   'folders.comparingFolders': 'Vergleiche: {left} ↔ {right}',
   'folders.noFolders': 'Keine Ordner geladen',
   'folders.emptyDescription': 'Wählen Sie oben zwei Ordner aus, um deren Inhalt zu vergleichen.',
+
+  'formatter.title': 'Formatierer',
+  'formatter.description': 'Text einfügen — doff erkennt die Sprache automatisch. Klicken Sie auf „Formatieren“ für eine schöne Darstellung oder „Kopieren“, um das Ergebnis in die Zwischenablage zu legen.',
+  'formatter.input': 'Eingabe',
+  'formatter.languageSelectAria': 'Sprache auswählen',
+  'formatter.autoDetected': 'automatisch erkannt',
+  'formatter.paste': 'Einfügen',
+  'formatter.format': 'Formatieren',
+  'formatter.copy': 'Kopieren',
+  'formatter.copied': 'Kopiert',
+  'formatter.clear': 'Leeren',
+  'formatter.placeholder': 'Fügen Sie JSON, HTML, CSS, XML, JavaScript oder anderen Text ein, um zu beginnen.',
+  'formatter.formatFailed': 'Die Eingabe konnte nicht formatiert werden.',
+  'formatter.formatFailedWith': 'Formatierung fehlgeschlagen: {error}',
+  'formatter.unsupported': 'Für {language} ist kein Formatierer verfügbar.',
+  'formatter.copyFailed': 'Kopieren fehlgeschlagen. Das Schreiben in die Zwischenablage ist nicht verfügbar.',
+  'formatter.pasteFailed': 'Einfügen fehlgeschlagen. Das Lesen aus der Zwischenablage ist nicht verfügbar.',
 }
 
 const ja: TranslationDictionary = {
@@ -984,6 +1056,7 @@ const ja: TranslationDictionary = {
   'app.loadingWorkspaceBody': 'この比較ビューとローカルツールを準備しています。',
 
   'nav.text': 'テキスト',
+  'nav.formatter': '整形',
   'nav.images': '画像',
   'nav.documents': '文書',
   'nav.spreadsheets': '表計算',
@@ -1215,6 +1288,23 @@ const ja: TranslationDictionary = {
   'folders.comparingFolders': '比較中: {left} ↔ {right}',
   'folders.noFolders': 'フォルダーが読み込まれていません',
   'folders.emptyDescription': '上で2つのフォルダーを選択して内容を比較します。',
+
+  'formatter.title': '整形ツール',
+  'formatter.description': 'テキストを貼り付けると doff が自動的に言語を検出します。「整形」で見やすく整え、「コピー」でクリップボードに戻せます。',
+  'formatter.input': '入力',
+  'formatter.languageSelectAria': '言語を選択',
+  'formatter.autoDetected': '自動検出',
+  'formatter.paste': '貼り付け',
+  'formatter.format': '整形',
+  'formatter.copy': 'コピー',
+  'formatter.copied': 'コピーしました',
+  'formatter.clear': 'クリア',
+  'formatter.placeholder': 'JSON、HTML、CSS、XML、JavaScript などのテキストを貼り付けて開始します。',
+  'formatter.formatFailed': '入力を整形できませんでした。',
+  'formatter.formatFailedWith': '整形に失敗しました: {error}',
+  'formatter.unsupported': '{language} 用の整形は利用できません。',
+  'formatter.copyFailed': 'コピーに失敗しました。クリップボードへの書き込みができません。',
+  'formatter.pasteFailed': '貼り付けに失敗しました。クリップボードからの読み取りができません。',
 }
 
 const zh: TranslationDictionary = {
@@ -1227,6 +1317,7 @@ const zh: TranslationDictionary = {
   'app.loadingWorkspaceBody': '正在准备该比较视图及其本地工具。',
 
   'nav.text': '文本',
+  'nav.formatter': '格式化',
   'nav.images': '图片',
   'nav.documents': '文档',
   'nav.spreadsheets': '表格',
@@ -1458,6 +1549,23 @@ const zh: TranslationDictionary = {
   'folders.comparingFolders': '正在比较: {left} ↔ {right}',
   'folders.noFolders': '未加载文件夹',
   'folders.emptyDescription': '在上方选择两个文件夹以比较其内容。',
+
+  'formatter.title': '格式化工具',
+  'formatter.description': '粘贴文本，doff 会自动识别语言类型。点击“格式化”进行美化，或点击“复制”将结果送回剪贴板。',
+  'formatter.input': '输入',
+  'formatter.languageSelectAria': '选择语言',
+  'formatter.autoDetected': '自动识别',
+  'formatter.paste': '粘贴',
+  'formatter.format': '格式化',
+  'formatter.copy': '复制',
+  'formatter.copied': '已复制',
+  'formatter.clear': '清除',
+  'formatter.placeholder': '在此粘贴 JSON、HTML、CSS、XML、JavaScript 或其他文本以开始使用。',
+  'formatter.formatFailed': '无法格式化输入。',
+  'formatter.formatFailedWith': '格式化失败：{error}',
+  'formatter.unsupported': '暂不支持格式化 {language}。',
+  'formatter.copyFailed': '复制失败。剪贴板写入不可用。',
+  'formatter.pasteFailed': '粘贴失败。剪贴板读取不可用。',
 }
 
 export type TranslationKey = keyof typeof en

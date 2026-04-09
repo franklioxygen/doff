@@ -19,6 +19,7 @@ import {
   IconMoonStars,
   IconPhotoSpark,
   IconShieldLock,
+  IconSparkles,
   IconSunHigh,
   IconTextSize,
 } from '@tabler/icons-react'
@@ -30,6 +31,7 @@ import { PlaceholderPage } from './PlaceholderPage'
 
 const NAV_ITEMS = [
   { labelKey: 'nav.text', to: '/text', icon: IconTextSize },
+  { labelKey: 'nav.formatter', to: '/formatter', icon: IconSparkles },
   { labelKey: 'nav.images', to: '/images', icon: IconPhotoSpark },
   { labelKey: 'nav.documents', to: '/documents', icon: IconFileDescription },
   { labelKey: 'nav.spreadsheets', to: '/spreadsheets', icon: IconFileSpreadsheet },

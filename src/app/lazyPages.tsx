@@ -4,6 +4,10 @@ export const LazyTextPage = lazy(() =>
   import('../features/text/TextPage').then((module) => ({ default: module.TextPage })),
 )
 
+export const LazyFormatterPage = lazy(() =>
+  import('../features/formatter/FormatterPage').then((module) => ({ default: module.FormatterPage })),
+)
+
 export const LazyImageComparePage = lazy(() =>
   import('../features/images/ImageComparePage').then((module) => ({ default: module.ImageComparePage })),
 )

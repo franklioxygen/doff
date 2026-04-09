@@ -4,6 +4,7 @@ import {
   LazyAboutPrivacyPage,
   LazyDocumentComparePage,
   LazyFolderComparePage,
+  LazyFormatterPage,
   LazyImageComparePage,
   LazySettingsPage,
   LazySpreadsheetComparePage,
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="/text" replace /> },
           { path: 'text', element: <LazyTextPage /> },
+          { path: 'formatter', element: <LazyFormatterPage /> },
           { path: 'images', element: <LazyImageComparePage /> },
           { path: 'documents', element: <LazyDocumentComparePage /> },
           {
