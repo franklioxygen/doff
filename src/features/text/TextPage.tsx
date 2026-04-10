@@ -30,6 +30,7 @@ import {
   IconTextPlus,
   IconTrash,
   IconUpload,
+  IconWand,
 } from '@tabler/icons-react'
 import { useDisclosure } from '@mantine/hooks'
 import Editor, { loader, useMonaco } from '@monaco-editor/react'
@@ -42,6 +43,7 @@ import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 import { computeDiff } from './textDiff'
 import { exportDiffHtml, loadDoffBundle, saveDoffBundle } from './exporters'
+import { formatText } from '../formatter/formatters'
 import { useSessionStore } from '../../store/sessionStore'
 import { useI18n } from '../../i18n'
 import { TEXT_LANGUAGES } from './languages'
@@ -311,6 +313,30 @@ export function TextPage() {
     } catch {
       setErrorMessage(t('text.copyFailed'))
     }
+  }
+
+  const handleFormatPane = async (side: Side) => {
+    const value = side === 'left' ? session.leftText : session.rightText
+    if (!value.trim()) return
+    const editor = side === 'left' ? leftEditorRef.current : rightEditorRef.current
+    const result = await formatText(session.options.language, value, editor)
+
+    if (result.ok) {
+      updateSideText(side, result.value)
+      setErrorMessage(null)
+      return
+    }
+
+    if (result.unsupported) {
+      setErrorMessage(t('text.unsupportedFormat', { language: session.options.language }))
+      return
+    }
+
+    setErrorMessage(
+      result.error
+        ? t('text.failedFormatWith', { error: result.error })
+        : t('text.failedFormat'),
+    )
   }
 
   const handleExportHtml = async () => {
@@ -683,6 +709,17 @@ export function TextPage() {
                       type="button"
                       size="compact-md"
                       variant="subtle"
+                      leftSection={<IconWand size={14} stroke={1.8} />}
+                      onClick={() => void handleFormatPane('left')}
+                      aria-label={t('text.formatLeftAria')}
+                      disabled={!session.leftText.trim() || onlyShowDiffs}
+                    >
+                      {t('text.format')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="compact-md"
+                      variant="subtle"
                       leftSection={<IconCopy size={14} stroke={1.8} />}
                       onClick={() => void handleCopyPane('left')}
                       aria-label={t('text.copyLeftAria')}
@@ -756,6 +793,17 @@ export function TextPage() {
                       aria-label={t('text.pasteRightAria')}
                     >
                       {t('text.pasteText')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="compact-md"
+                      variant="subtle"
+                      leftSection={<IconWand size={14} stroke={1.8} />}
+                      onClick={() => void handleFormatPane('right')}
+                      aria-label={t('text.formatRightAria')}
+                      disabled={!session.rightText.trim() || onlyShowDiffs}
+                    >
+                      {t('text.format')}
                     </Button>
                     <Button
                       type="button"
@@ -846,6 +894,17 @@ export function TextPage() {
                         type="button"
                         size="compact-md"
                         variant="subtle"
+                        leftSection={<IconWand size={14} stroke={1.8} />}
+                        onClick={() => void handleFormatPane('left')}
+                        aria-label={t('text.formatLeftAria')}
+                        disabled={!session.leftText.trim() || onlyShowDiffs}
+                      >
+                        {t('text.format')}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="compact-md"
+                        variant="subtle"
                         leftSection={<IconCopy size={14} stroke={1.8} />}
                         onClick={() => void handleCopyPane('left')}
                         aria-label={t('text.copyLeftAria')}
@@ -916,6 +975,17 @@ export function TextPage() {
                         aria-label={t('text.pasteRightAria')}
                       >
                         {t('text.pasteText')}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="compact-md"
+                        variant="subtle"
+                        leftSection={<IconWand size={14} stroke={1.8} />}
+                        onClick={() => void handleFormatPane('right')}
+                        aria-label={t('text.formatRightAria')}
+                        disabled={!session.rightText.trim() || onlyShowDiffs}
+                      >
+                        {t('text.format')}
                       </Button>
                       <Button
                         type="button"
