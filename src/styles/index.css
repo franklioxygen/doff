@@ -146,6 +146,16 @@ textarea {
   border: 0;
 }
 
+.app-shell .app-header,
+.app-shell .app-footer-shell {
+  position: relative;
+  inset: auto;
+  top: auto;
+  bottom: auto;
+  transform: none;
+  z-index: auto;
+}
+
 .app-header::after,
 .app-footer-shell::after {
   content: '';

@@ -56,8 +56,8 @@ export function AppLayout() {
         {t('app.skipToMain')}
       </a>
       <AppShell
-        header={{ height: 92 }}
-        footer={{ height: 72 }}
+        header={{ height: 92, offset: false }}
+        footer={{ height: 72, offset: false }}
         padding={0}
         className="app-shell"
       >
