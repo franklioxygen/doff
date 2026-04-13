@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState } from 'react'
 import {
   Button,
-  Grid,
   Group,
   Image,
+  SimpleGrid,
   Stack,
   Text,
 } from '@mantine/core'
@@ -275,6 +275,49 @@ type DiffViewProps = {
   selectedPage: number
 }
 
+type PreviewCardProps = {
+  alt: string
+  header: string
+  page: PdfPage | undefined
+}
+
+const PagePreviewCard = ({ alt, header, page }: PreviewCardProps) => {
+  const { t } = useI18n()
+
+  return (
+    <article className="doc-preview-card">
+      <div className="doc-preview-meta">
+        <Text fw={600}>{header}</Text>
+        {page ? (
+          <Text size="sm" c="dimmed">
+            {page.width.toFixed(0)}×{page.height.toFixed(0)}
+          </Text>
+        ) : (
+          <Text size="sm" c="dimmed">
+            {t('common.none')}
+          </Text>
+        )}
+      </div>
+      <div className="doc-preview-stage">
+        {page?.thumbnail ? (
+          <Image
+            src={page.thumbnail}
+            alt={alt}
+            className="doc-preview-image"
+            radius="md"
+          />
+        ) : (
+          <div className="doc-preview-empty">
+            <Text size="sm" c="dimmed">
+              {t('common.none')}
+            </Text>
+          </div>
+        )}
+      </div>
+    </article>
+  )
+}
+
 const DiffView = ({ leftDoc, rightDoc, selectedPage }: DiffViewProps) => {
   const { t, formatNumber } = useI18n()
   const leftPage = leftDoc?.pages[selectedPage - 1]
@@ -300,89 +343,75 @@ const DiffView = ({ leftDoc, rightDoc, selectedPage }: DiffViewProps) => {
 
   return (
     <div className="doc-diff-panel">
-      <div className="doc-diff-header">
-        <div className="doc-diff-side">
-          <strong>
-            {t('documents.leftPageHeader', {
-              page: formatNumber(selectedPage),
-              dimensions: leftPage ? ` (${leftPage.width.toFixed(0)}×${leftPage.height.toFixed(0)})` : '',
-            })}
-          </strong>
-          {leftPage?.thumbnail && (
-            <Image
-              src={leftPage.thumbnail}
-              alt={t('documents.leftThumbnailAlt', { page: formatNumber(selectedPage) })}
-              className="page-thumb"
-              radius="md"
-            />
-          )}
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg" className="doc-preview-grid">
+        <PagePreviewCard
+          alt={t('documents.leftThumbnailAlt', { page: formatNumber(selectedPage) })}
+          header={t('documents.leftPageHeader', {
+            page: formatNumber(selectedPage),
+            dimensions: '',
+          })}
+          page={leftPage}
+        />
+        <PagePreviewCard
+          alt={t('documents.rightThumbnailAlt', { page: formatNumber(selectedPage) })}
+          header={t('documents.rightPageHeader', {
+            page: formatNumber(selectedPage),
+            dimensions: '',
+          })}
+          page={rightPage}
+        />
+      </SimpleGrid>
+      <div className="doc-diff-table-area">
+        <div className="diff-table-wrap nowrap">
+          <table className="diff-table">
+            <tbody>
+              {result.rows.map((row) => (
+                <tr
+                  key={row.id}
+                  className={`diff-row ${
+                    row.type === 'added'
+                      ? 'row-added'
+                      : row.type === 'removed'
+                      ? 'row-removed'
+                      : row.type === 'changed'
+                      ? 'row-changed'
+                      : ''
+                  }`}
+                >
+                  {row.type === 'changed' ? (
+                    <>
+                      <td className="line-cell">{row.leftLine ?? ''}</td>
+                      <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.leftHtml }} />
+                      <td className="line-cell">{row.rightLine ?? ''}</td>
+                      <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.rightHtml }} />
+                    </>
+                  ) : row.type === 'removed' ? (
+                    <>
+                      <td className="line-cell">{row.leftLine ?? ''}</td>
+                      <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.leftHtml }} />
+                      <td className="line-cell" />
+                      <td className="code-cell" />
+                    </>
+                  ) : row.type === 'added' ? (
+                    <>
+                      <td className="line-cell" />
+                      <td className="code-cell" />
+                      <td className="line-cell">{row.rightLine ?? ''}</td>
+                      <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.rightHtml }} />
+                    </>
+                  ) : (
+                    <>
+                      <td className="line-cell">{row.leftLine ?? ''}</td>
+                      <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.leftHtml }} />
+                      <td className="line-cell">{row.rightLine ?? ''}</td>
+                      <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.rightHtml }} />
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div className="doc-diff-side">
-          <strong>
-            {t('documents.rightPageHeader', {
-              page: formatNumber(selectedPage),
-              dimensions: rightPage ? ` (${rightPage.width.toFixed(0)}×${rightPage.height.toFixed(0)})` : '',
-            })}
-          </strong>
-          {rightPage?.thumbnail && (
-            <Image
-              src={rightPage.thumbnail}
-              alt={t('documents.rightThumbnailAlt', { page: formatNumber(selectedPage) })}
-              className="page-thumb"
-              radius="md"
-            />
-          )}
-        </div>
-      </div>
-      <div className="diff-table-wrap nowrap">
-        <table className="diff-table">
-          <tbody>
-            {result.rows.map((row) => (
-              <tr
-                key={row.id}
-                className={`diff-row ${
-                  row.type === 'added'
-                    ? 'row-added'
-                    : row.type === 'removed'
-                    ? 'row-removed'
-                    : row.type === 'changed'
-                    ? 'row-changed'
-                    : ''
-                }`}
-              >
-                {row.type === 'changed' ? (
-                  <>
-                    <td className="line-cell">{row.leftLine ?? ''}</td>
-                    <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.leftHtml }} />
-                    <td className="line-cell">{row.rightLine ?? ''}</td>
-                    <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.rightHtml }} />
-                  </>
-                ) : row.type === 'removed' ? (
-                  <>
-                    <td className="line-cell">{row.leftLine ?? ''}</td>
-                    <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.leftHtml }} />
-                    <td className="line-cell" />
-                    <td className="code-cell" />
-                  </>
-                ) : row.type === 'added' ? (
-                  <>
-                    <td className="line-cell" />
-                    <td className="code-cell" />
-                    <td className="line-cell">{row.rightLine ?? ''}</td>
-                    <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.rightHtml }} />
-                  </>
-                ) : (
-                  <>
-                    <td className="line-cell">{row.leftLine ?? ''}</td>
-                    <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.leftHtml }} />
-                    <td className="line-cell">{row.rightLine ?? ''}</td>
-                    <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.rightHtml }} />
-                  </>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
       <div className="diff-stats">
         <span className="pill pill-added">+ {result.stats.added}</span>
@@ -423,12 +452,14 @@ export function DocumentComparePage() {
   )
 
   const bothLoaded = leftDoc && rightDoc
+  const totalPages = Math.max(leftDoc?.numPages ?? 0, rightDoc?.numPages ?? 0)
 
   return (
     <section className="doc-page">
       <Stack gap="lg">
         <PageHero
           title={t('documents.title')}
+          description={t('documents.loadTwoPdfs')}
           icon={<IconFileDescription size={26} stroke={1.8} />}
           stats={(
             <>
@@ -452,75 +483,83 @@ export function DocumentComparePage() {
           )}
         />
 
-        <Grid gutter="lg">
-          <Grid.Col span={{ base: 12, xl: 6 }}>
-            <SurfaceCard title={`${t('common.left')} PDF`} className="upload-surface">
-              <PdfDropZone
-                label={`${t('common.left')} PDF`}
-                doc={leftDoc}
-                onFile={(f) => handleFile('left', f)}
-                onClear={() => handleClear('left')}
-              />
-            </SurfaceCard>
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, xl: 6 }}>
-            <SurfaceCard title={`${t('common.right')} PDF`} className="upload-surface">
-              <PdfDropZone
-                label={`${t('common.right')} PDF`}
-                doc={rightDoc}
-                onFile={(f) => handleFile('right', f)}
-                onClear={() => handleClear('right')}
-              />
-            </SurfaceCard>
-          </Grid.Col>
-        </Grid>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+          <SurfaceCard title={`${t('common.left')} PDF`} className="upload-surface">
+            <PdfDropZone
+              label={`${t('common.left')} PDF`}
+              doc={leftDoc}
+              onFile={(f) => handleFile('left', f)}
+              onClear={() => handleClear('left')}
+            />
+          </SurfaceCard>
+          <SurfaceCard title={`${t('common.right')} PDF`} className="upload-surface">
+            <PdfDropZone
+              label={`${t('common.right')} PDF`}
+              doc={rightDoc}
+              onFile={(f) => handleFile('right', f)}
+              onClear={() => handleClear('right')}
+            />
+          </SurfaceCard>
+        </SimpleGrid>
 
         <SurfaceCard
-          title={bothLoaded ? t('common.comparing') : t('documents.title')}
+          title={t('common.comparing')}
           description={bothLoaded
             ? t('documents.comparingPageOf', {
                 page: formatNumber(selectedPage),
-                total: formatNumber(Math.max(leftDoc.numPages, rightDoc.numPages)),
+                total: formatNumber(totalPages),
               })
             : t('documents.loadTwoPdfs')}
+          className="control-surface"
           headerAside={(
             <Button
               type="button"
               variant="default"
               leftSection={<IconTrash size={16} stroke={1.8} />}
               onClick={clearDocumentSession}
+              disabled={!leftDoc && !rightDoc}
             >
               {t('documents.clearSession')}
             </Button>
           )}
         >
-          <Text c="dimmed" size="sm">
-            {bothLoaded ? t('documents.loadTwoPdfs') : t('documents.dropPdfHere')}
-          </Text>
+          <Group gap="xs" wrap="wrap">
+            {totalPages > 0 && (
+              <StatBadge>
+                {t('documents.page')} {formatNumber(selectedPage)} / {formatNumber(totalPages)}
+              </StatBadge>
+            )}
+            {leftDoc && (
+              <StatBadge>
+                {t('common.left')} · {formatNumber(leftDoc.numPages)} {t('common.pages')}
+              </StatBadge>
+            )}
+            {rightDoc && (
+              <StatBadge>
+                {t('common.right')} · {formatNumber(rightDoc.numPages)} {t('common.pages')}
+              </StatBadge>
+            )}
+          </Group>
         </SurfaceCard>
 
         {(leftDoc || rightDoc) && (
-          <Grid gutter="lg" className="doc-content-grid">
-            <Grid.Col span={{ base: 12, xl: 4 }}>
-              <SurfaceCard title={t('documents.page')} className="doc-list-surface" padded={false}>
-                <PageList
-                  leftDoc={leftDoc}
-                  rightDoc={rightDoc}
-                  selectedPage={selectedPage}
-                  onSelectPage={(n) => setDocumentSession({ selectedPage: n })}
-                />
-              </SurfaceCard>
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, xl: 8 }}>
-              <SurfaceCard title={t('documents.changes')} className="doc-diff-surface" padded={false}>
-                <DiffView
-                  leftDoc={leftDoc}
-                  rightDoc={rightDoc}
-                  selectedPage={selectedPage}
-                />
-              </SurfaceCard>
-            </Grid.Col>
-          </Grid>
+          <div className="doc-workbench">
+            <SurfaceCard title={t('documents.page')} className="doc-list-surface" padded={false}>
+              <PageList
+                leftDoc={leftDoc}
+                rightDoc={rightDoc}
+                selectedPage={selectedPage}
+                onSelectPage={(n) => setDocumentSession({ selectedPage: n })}
+              />
+            </SurfaceCard>
+            <SurfaceCard title={t('documents.changes')} className="doc-diff-surface" padded={false}>
+              <DiffView
+                leftDoc={leftDoc}
+                rightDoc={rightDoc}
+                selectedPage={selectedPage}
+              />
+            </SurfaceCard>
+          </div>
         )}
 
         {!leftDoc && !rightDoc && (
