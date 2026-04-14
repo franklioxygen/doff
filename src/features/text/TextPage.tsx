@@ -674,7 +674,9 @@ export function TextPage() {
             <SurfaceCard className="editor-surface" padded={false}>
               <div
                 className="editor-pane"
-                onDragOver={(event) => event.preventDefault()}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                }}
                 onDrop={(event) => {
                   void handleDrop(event, 'left').catch(() => {})
                 }}
@@ -763,7 +765,9 @@ export function TextPage() {
             <SurfaceCard className="editor-surface" padded={false}>
               <div
                 className="editor-pane"
-                onDragOver={(event) => event.preventDefault()}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                }}
                 onDrop={(event) => {
                   void handleDrop(event, 'right').catch(() => {})
                 }}
@@ -862,7 +866,9 @@ export function TextPage() {
               <Tabs.Panel value="left">
                 <div
                   className="editor-pane"
-                  onDragOver={(event) => event.preventDefault()}
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                  }}
                   onDrop={(event) => {
                     void handleDrop(event, 'left').catch(() => {})
                   }}
@@ -948,7 +954,9 @@ export function TextPage() {
               <Tabs.Panel value="right">
                 <div
                   className="editor-pane"
-                  onDragOver={(event) => event.preventDefault()}
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                  }}
                   onDrop={(event) => {
                     void handleDrop(event, 'right').catch(() => {})
                   }}

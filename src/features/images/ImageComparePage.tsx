@@ -37,11 +37,19 @@ import { SurfaceCard } from '../../components/ui/SurfaceCard'
 const loadImageBitmap = (file: File): Promise<ImageBitmap> =>
   createImageBitmap(file)
 
+const getCanvasContext = (canvas: HTMLCanvasElement): CanvasRenderingContext2D => {
+  const context = canvas.getContext('2d')
+  if (!context) {
+    throw new Error('2D canvas context is unavailable')
+  }
+  return context
+}
+
 const imageBitmapToDataUrl = (bmp: ImageBitmap): string => {
   const c = document.createElement('canvas')
   c.width = bmp.width
   c.height = bmp.height
-  c.getContext('2d')!.drawImage(bmp, 0, 0)
+  getCanvasContext(c).drawImage(bmp, 0, 0)
   return c.toDataURL()
 }
 
@@ -76,13 +84,13 @@ const computeDiffPercent = (
   const c2 = document.createElement('canvas')
   c1.width = w; c1.height = h
   c2.width = w; c2.height = h
-  const ctx1 = c1.getContext('2d')!
-  const ctx2 = c2.getContext('2d')!
+  const ctx1 = getCanvasContext(c1)
+  const ctx2 = getCanvasContext(c2)
   ctx1.drawImage(left, 0, 0)
   ctx2.drawImage(right, 0, 0)
   const diff = document.createElement('canvas')
   diff.width = w; diff.height = h
-  const outCtx = diff.getContext('2d')!
+  const outCtx = getCanvasContext(diff)
   const d1 = ctx1.getImageData(0, 0, w, h)
   const d2 = ctx2.getImageData(0, 0, w, h)
   const out = outCtx.createImageData(w, h)
@@ -109,7 +117,9 @@ const DropZone = ({ label, image, onFile, side }: DropZoneProps) => {
       e.preventDefault()
       setDragging(false)
       const file = e.dataTransfer.files[0]
-      if (file && file.type.startsWith('image/')) onFile(file)
+      if (file?.type.startsWith('image/')) {
+        onFile(file)
+      }
     },
     [onFile],
   )
@@ -136,7 +146,10 @@ const DropZone = ({ label, image, onFile, side }: DropZoneProps) => {
             <Button type="button" variant="light" onClick={() => inputRef.current?.click()}>
               {t('common.replace')}
             </Button>
-            <Button type="button" variant="default" onClick={() => onFile(null)}>
+            <Button type="button" variant="default" onClick={() => {
+              onFile(null)
+            }}
+            >
               {t('common.clear')}
             </Button>
           </Group>
@@ -145,7 +158,9 @@ const DropZone = ({ label, image, onFile, side }: DropZoneProps) => {
         <div
           className="upload-drop-zone-empty"
           onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-          onDragLeave={() => setDragging(false)}
+          onDragLeave={() => {
+            setDragging(false)
+          }}
           onDrop={handleDrop}
           onClick={() => inputRef.current?.click()}
           role="button"
@@ -202,7 +217,7 @@ const ViewCanvas = ({ image, style }: ViewCanvasProps) => {
   const draw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || !image) return
-    const ctx = canvas.getContext('2d')!
+    const ctx = getCanvasContext(canvas)
     canvas.width = image.width
     canvas.height = image.height
     ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -235,13 +250,14 @@ const ViewCanvas = ({ image, style }: ViewCanvasProps) => {
   }, [transform.tx, transform.ty])
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!panRef.current) return
-    const dx = e.clientX - panRef.current.startX
-    const dy = e.clientY - panRef.current.startY
+    const panState = panRef.current
+    if (!panState) return
+    const dx = e.clientX - panState.startX
+    const dy = e.clientY - panState.startY
     setTransform((prev) => ({
       ...prev,
-      tx: panRef.current!.startTx + dx,
-      ty: panRef.current!.startTy + dy,
+      tx: panState.startTx + dx,
+      ty: panState.startTy + dy,
     }))
   }, [])
 
@@ -285,16 +301,18 @@ const DiffCanvas = ({ left, right, transform }: DiffCanvasProps) => {
     const h = Math.max(left.height, right.height)
     canvas.width = w
     canvas.height = h
-    const ctx = canvas.getContext('2d')!
+    const ctx = getCanvasContext(canvas)
 
     const c1 = document.createElement('canvas')
     const c2 = document.createElement('canvas')
     c1.width = w; c1.height = h
     c2.width = w; c2.height = h
-    c1.getContext('2d')!.drawImage(left.bitmap, 0, 0)
-    c2.getContext('2d')!.drawImage(right.bitmap, 0, 0)
-    const d1 = c1.getContext('2d')!.getImageData(0, 0, w, h)
-    const d2 = c2.getContext('2d')!.getImageData(0, 0, w, h)
+    const leftContext = getCanvasContext(c1)
+    const rightContext = getCanvasContext(c2)
+    leftContext.drawImage(left.bitmap, 0, 0)
+    rightContext.drawImage(right.bitmap, 0, 0)
+    const d1 = leftContext.getImageData(0, 0, w, h)
+    const d2 = rightContext.getImageData(0, 0, w, h)
     const out = ctx.createImageData(w, h)
     pixelmatch(d1.data, d2.data, out.data, w, h, { threshold: 0.1 })
     ctx.putImageData(out, 0, 0)
@@ -341,7 +359,7 @@ const SliderCanvas = ({ left, right, sliderPct, mode, transform }: SliderCanvasP
     const h = Math.max(left.height, right.height)
     canvas.width = w
     canvas.height = h
-    const ctx = canvas.getContext('2d')!
+    const ctx = getCanvasContext(canvas)
     ctx.clearRect(0, 0, w, h)
 
     if (mode === 'overlay') {
@@ -437,7 +455,9 @@ const SliderCanvas = ({ left, right, sliderPct, mode, transform }: SliderCanvasP
     canvas.dispatchEvent(event)
   }, [isDragging, mode])
 
-  const handleMouseUp = useCallback(() => setIsDragging(false), [])
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false)
+  }, [])
 
   return (
     <div
@@ -528,7 +548,9 @@ export function ImageComparePage() {
         setComputing(false)
       }
     }, 100)
-    return () => clearTimeout(timeout)
+    return () => {
+      clearTimeout(timeout)
+    }
   }, [leftImage, rightImage, mode, setImageSession])
 
   // Slider event listener
@@ -537,12 +559,17 @@ export function ImageComparePage() {
       setImageSession({ sliderPosition: (e as CustomEvent<number>).detail })
     }
     window.addEventListener('slider-change', handleSlider)
-    return () => window.removeEventListener('slider-change', handleSlider)
+    return () => {
+      window.removeEventListener('slider-change', handleSlider)
+    }
   }, [setImageSession])
 
-  const bothLoaded = leftImage && rightImage
+  const comparedImages = leftImage && rightImage ? { left: leftImage, right: rightImage } : null
+  const bothLoaded = comparedImages !== null
 
-  const handleResetZoom = () => setTransform(DEFAULT_TRANSFORM)
+  const handleResetZoom = () => {
+    setTransform(DEFAULT_TRANSFORM)
+  }
 
   return (
     <section className="image-page">
@@ -563,16 +590,16 @@ export function ImageComparePage() {
                 </StatBadge>
               )}
               {computing && <StatBadge>{t('images.computingDiff')}</StatBadge>}
-              {bothLoaded && (
+              {comparedImages && (
                 <>
                   <StatBadge>
-                    {t('images.leftDimensions', { dimensions: `${leftImage!.width}×${leftImage!.height}` })}
+                    {t('images.leftDimensions', { dimensions: `${comparedImages.left.width}×${comparedImages.left.height}` })}
                   </StatBadge>
                   <StatBadge>
-                    {t('images.rightDimensions', { dimensions: `${rightImage!.width}×${rightImage!.height}` })}
+                    {t('images.rightDimensions', { dimensions: `${comparedImages.right.width}×${comparedImages.right.height}` })}
                   </StatBadge>
                   <StatBadge>
-                    {formatBytes(leftImage!.size)} · {formatBytes(rightImage!.size)}
+                    {formatBytes(comparedImages.left.size)} · {formatBytes(comparedImages.right.size)}
                   </StatBadge>
                 </>
               )}
@@ -672,13 +699,13 @@ export function ImageComparePage() {
                 />
               </div>
             )}
-            {bothLoaded && mode === 'diff' && (
-              <DiffCanvas left={leftImage} right={rightImage} transform={transform} />
+            {comparedImages && mode === 'diff' && (
+              <DiffCanvas left={comparedImages.left} right={comparedImages.right} transform={transform} />
             )}
-            {bothLoaded && mode !== 'diff' && (
+            {comparedImages && mode !== 'diff' && (
               <SliderCanvas
-                left={leftImage}
-                right={rightImage}
+                left={comparedImages.left}
+                right={comparedImages.right}
                 sliderPct={sliderPosition}
                 mode={mode}
                 transform={transform}
@@ -687,13 +714,13 @@ export function ImageComparePage() {
           </div>
         </SurfaceCard>
 
-        {bothLoaded && (
+        {comparedImages && (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-            <SurfaceCard title={leftImage!.name} className="side-panel">
-              <ViewCanvas image={leftImage} />
+            <SurfaceCard title={comparedImages.left.name} className="side-panel">
+              <ViewCanvas image={comparedImages.left} />
             </SurfaceCard>
-            <SurfaceCard title={rightImage!.name} className="side-panel">
-              <ViewCanvas image={rightImage} />
+            <SurfaceCard title={comparedImages.right.name} className="side-panel">
+              <ViewCanvas image={comparedImages.right} />
             </SurfaceCard>
           </SimpleGrid>
         )}

@@ -59,20 +59,20 @@ function formatCss(input: string): FormatResult {
     for (let i = 0; i < compact.length; i++) {
       const ch = compact[i]
       if (ch === '{') {
-        out += ' {\n' + '  '.repeat(indent + 1)
+        out += ` {\n${'  '.repeat(indent + 1)}`
         indent++
       } else if (ch === '}') {
         indent = Math.max(0, indent - 1)
         out = out.replace(/\s+$/, '')
-        out += '\n' + '  '.repeat(indent) + '}\n' + '  '.repeat(indent)
+        out += `\n${'  '.repeat(indent)}}\n${'  '.repeat(indent)}`
       } else if (ch === ';') {
-        out += ';\n' + '  '.repeat(indent)
+        out += `;\n${'  '.repeat(indent)}`
       } else {
         out += ch
       }
     }
 
-    return { ok: true, value: out.trim() + '\n' }
+    return { ok: true, value: `${out.trim()}\n` }
   } catch (e) {
     return { ok: false, value: input, error: (e as Error).message }
   }

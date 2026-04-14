@@ -96,8 +96,16 @@ function compareSheets(left: SheetData, right: SheetData): SheetDiff {
   const rightKeySet = new Set<string>()
 
   // Collect all column keys across all rows for both sheets
-  leftRows.forEach((row) => Object.keys(row).forEach((k) => leftKeySet.add(k)))
-  rightRows.forEach((row) => Object.keys(row).forEach((k) => rightKeySet.add(k)))
+  leftRows.forEach((row) => {
+    Object.keys(row).forEach((k) => {
+      leftKeySet.add(k)
+    })
+  })
+  rightRows.forEach((row) => {
+    Object.keys(row).forEach((k) => {
+      rightKeySet.add(k)
+    })
+  })
 
   const allKeys = Array.from(new Set([...leftKeySet, ...rightKeySet])).sort()
   allKeys.forEach((k) => allKeysSet.add(k))
@@ -225,7 +233,9 @@ function DropZone({
         accept={accept}
         onChange={handleFileInput}
         onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-        onDragLeave={() => setDragging(false)}
+        onDragLeave={() => {
+          setDragging(false)
+        }}
         onDrop={handleDrop}
         style={{ display: 'none' }}
         id={inputId}
@@ -293,7 +303,11 @@ function SheetSelector({
       </Text>
       <Select
         value={selected}
-        onChange={(value) => value && onSelect(value)}
+        onChange={(value) => {
+          if (value) {
+            onSelect(value)
+          }
+        }}
         data={sheets.map((sheet) => ({
           value: sheet.name,
           label: `${sheet.name} (${t('spreadsheets.rowsCount', { count: formatNumber(sheet.rows.length) })})`,
@@ -383,8 +397,8 @@ export function SpreadsheetComparePage() {
   const setSpreadsheetSession = useSessionStore((state) => state.setSpreadsheetSession)
   const { t } = useI18n()
 
-  const [leftFile, setLeftFile] = useState<LoadedFile | null>(spreadsheetSession.leftFile)
-  const [rightFile, setRightFile] = useState<LoadedFile | null>(spreadsheetSession.rightFile)
+  const [leftFile, setLeftFile] = useState<LoadedFile | null>(spreadsheetSession.leftFile as LoadedFile | null)
+  const [rightFile, setRightFile] = useState<LoadedFile | null>(spreadsheetSession.rightFile as LoadedFile | null)
   const [leftSheet, setLeftSheet] = useState<string>(spreadsheetSession.leftSheet || '')
   const [rightSheet, setRightSheet] = useState<string>(spreadsheetSession.rightSheet || '')
 

@@ -12,7 +12,7 @@ import {
   IconFolders,
   IconTrash,
 } from '@tabler/icons-react'
-import { computeDiff } from '../text/textDiff'
+import { computeDiff, type DiffSegment } from '../text/textDiff'
 import { useSessionStore, type FolderSession } from '../../store/sessionStore'
 import { useI18n } from '../../i18n'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -80,6 +80,23 @@ function isTextFile(name: string): boolean {
   const knownText = ['makefile', 'dockerfile', 'rakefile', 'gemfile', 'procfile']
   return knownText.includes(lower)
 }
+
+const renderDiffSegments = (segments: DiffSegment[]) => (
+  <>
+    {segments.map((segment, index) => (
+      segment.kind === 'plain'
+        ? <span key={`plain-${index}`}>{segment.text}</span>
+        : (
+          <mark
+            key={`${segment.kind}-${index}`}
+            className={segment.kind === 'added' ? 'intraline-added' : 'intraline-removed'}
+          >
+            {segment.text}
+          </mark>
+        )
+    ))}
+  </>
+)
 
 async function readFolderHandle(handle: FileSystemDirectoryHandle, label: string, basePath = ''): Promise<LoadedFolder> {
   const entries = new Map<string, FileEntry>()
@@ -309,7 +326,9 @@ function FolderPickerZone({
     <div
       className={`upload-drop-zone ${dragging ? 'upload-drop-zone-active' : ''} ${folder ? 'upload-drop-zone-filled' : ''}`}
       onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-      onDragLeave={() => setDragging(false)}
+      onDragLeave={() => {
+        setDragging(false)
+      }}
       onDrop={handleDrop}
     >
       {/* Hidden webkitdirectory input as fallback for browsers without showDirectoryPicker */}
@@ -375,7 +394,9 @@ async function readWebkitDirectoryEntry(
   const reader = dirEntry.createReader()
 
   const readEntries = (): Promise<FileSystemEntry[]> =>
-    new Promise((resolve, reject) => reader.readEntries(resolve, reject))
+    new Promise((resolve, reject) => {
+      reader.readEntries(resolve, reject)
+    })
 
   let batch = await readEntries()
   while (batch.length > 0) {
@@ -385,9 +406,9 @@ async function readWebkitDirectoryEntry(
         const subResults = await readWebkitDirectoryEntry(entry as FileSystemDirectoryEntry, fullPath)
         results.push(...subResults)
       } else {
-        const file = await new Promise<File>((resolve, reject) =>
-          (entry as FileSystemFileEntry).file(resolve, reject),
-        )
+        const file = await new Promise<File>((resolve, reject) => {
+          (entry as FileSystemFileEntry).file(resolve, reject)
+        })
         results.push({ path: fullPath, file })
       }
     }
@@ -434,10 +455,16 @@ function FileList({ diff }: { diff: FolderDiffResult }) {
             <div key={entry.path} className={`file-entry file-entry-${entry.status}`}>
               <div
                 className={`file-entry-row ${isExpandable ? 'expandable' : ''}`}
-                onClick={isExpandable ? () => toggle(entry.path) : undefined}
+                onClick={isExpandable ? () => {
+                  toggle(entry.path)
+                } : undefined}
                 role={isExpandable ? 'button' : undefined}
                 tabIndex={isExpandable ? 0 : undefined}
-                onKeyDown={isExpandable ? (e) => e.key === 'Enter' && toggle(entry.path) : undefined}
+                onKeyDown={isExpandable ? (e) => {
+                  if (e.key === 'Enter') {
+                    toggle(entry.path)
+                  }
+                } : undefined}
               >
                 <span className="file-status-icon">
                   {entry.status === 'identical' && '✓'}
@@ -475,14 +502,8 @@ function FileList({ diff }: { diff: FolderDiffResult }) {
                       <span className="diff-row-marker">
                         {row.type === 'unchanged' ? ' ' : row.type === 'added' ? '+' : row.type === 'removed' ? '-' : '~'}
                       </span>
-                      <span
-                        className="diff-row-left"
-                        dangerouslySetInnerHTML={{ __html: row.leftHtml || '' }}
-                      />
-                      <span
-                        className="diff-row-right"
-                        dangerouslySetInnerHTML={{ __html: row.rightHtml || '' }}
-                      />
+                      <span className="diff-row-left">{renderDiffSegments(row.leftSegments)}</span>
+                      <span className="diff-row-right">{renderDiffSegments(row.rightSegments)}</span>
                     </div>
                   ))}
                   {entry.diffRows.length > 100 && (
@@ -513,8 +534,8 @@ export function FolderComparePage() {
   const setFolderSession = useSessionStore((state) => state.setFolderSession)
   const { t } = useI18n()
 
-  const [leftFolder, setLeftFolder] = useState<LoadedFolder | null>(folderSession.leftFolder)
-  const [rightFolder, setRightFolder] = useState<LoadedFolder | null>(folderSession.rightFolder)
+  const [leftFolder, setLeftFolder] = useState<LoadedFolder | null>(folderSession.leftFolder as LoadedFolder | null)
+  const [rightFolder, setRightFolder] = useState<LoadedFolder | null>(folderSession.rightFolder as LoadedFolder | null)
 
   const syncSession = useCallback(
     (partial: Partial<FolderSession>) => {

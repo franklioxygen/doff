@@ -13,7 +13,7 @@ import {
   IconUpload,
 } from '@tabler/icons-react'
 import { useSessionStore } from '../../store/sessionStore'
-import { computeDiff } from '../text/textDiff'
+import { computeDiff, type DiffSegment } from '../text/textDiff'
 import type { PdfPage, PdfDocInfo } from '../../store/sessionStore'
 import { useI18n } from '../../i18n'
 import * as pdfjsLib from 'pdfjs-dist'
@@ -40,11 +40,34 @@ const renderPageThumbnail = (
     const canvas = document.createElement('canvas')
     canvas.width = vp.width
     canvas.height = vp.height
-    const ctx = canvas.getContext('2d')!
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      reject(new Error('2D canvas context is unavailable'))
+      return
+    }
     const op = { canvasContext: ctx, viewport: vp } as Parameters<typeof page.render>[0]
     page.render(op as Parameters<typeof page.render>[0])
-      .promise.then(() => resolve(canvas.toDataURL()), reject)
+      .promise.then(() => {
+        resolve(canvas.toDataURL())
+      }, reject)
   })
+
+const renderDiffSegments = (segments: DiffSegment[]) => (
+  <>
+    {segments.map((segment, index) => (
+      segment.kind === 'plain'
+        ? <span key={`plain-${index}`}>{segment.text}</span>
+        : (
+          <mark
+            key={`${segment.kind}-${index}`}
+            className={segment.kind === 'added' ? 'intraline-added' : 'intraline-removed'}
+          >
+            {segment.text}
+          </mark>
+        )
+    ))}
+  </>
+)
 
 const loadPdfDoc = async (file: File): Promise<PdfDocInfo> => {
   const arrayBuffer = await file.arrayBuffer()
@@ -124,7 +147,9 @@ const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
           <div
             className="upload-drop-zone-empty"
             onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-            onDragLeave={() => setDragging(false)}
+            onDragLeave={() => {
+              setDragging(false)
+            }}
             onDrop={handleDrop}
             onClick={() => inputRef.current?.click()}
             role="button"
@@ -251,7 +276,9 @@ const PageList = ({ leftDoc, rightDoc, selectedPage, onSelectPage }: PageListPro
           key={entry.pageNum}
           type="button"
           className={`page-list-row ${selectedPage === entry.pageNum ? 'page-list-row-active' : ''} ${entry.identical ? 'page-identical' : 'page-different'}`}
-          onClick={() => onSelectPage(entry.pageNum)}
+          onClick={() => {
+            onSelectPage(entry.pageNum)
+          }}
         >
           <span>{entry.pageNum}</span>
           <span>{leftDoc?.pages[entry.pageNum - 1] ? '✓' : '–'}</span>
@@ -381,14 +408,14 @@ const DiffView = ({ leftDoc, rightDoc, selectedPage }: DiffViewProps) => {
                   {row.type === 'changed' ? (
                     <>
                       <td className="line-cell">{row.leftLine ?? ''}</td>
-                      <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.leftHtml }} />
+                      <td className="code-cell">{renderDiffSegments(row.leftSegments)}</td>
                       <td className="line-cell">{row.rightLine ?? ''}</td>
-                      <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.rightHtml }} />
+                      <td className="code-cell">{renderDiffSegments(row.rightSegments)}</td>
                     </>
                   ) : row.type === 'removed' ? (
                     <>
                       <td className="line-cell">{row.leftLine ?? ''}</td>
-                      <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.leftHtml }} />
+                      <td className="code-cell">{renderDiffSegments(row.leftSegments)}</td>
                       <td className="line-cell" />
                       <td className="code-cell" />
                     </>
@@ -397,14 +424,14 @@ const DiffView = ({ leftDoc, rightDoc, selectedPage }: DiffViewProps) => {
                       <td className="line-cell" />
                       <td className="code-cell" />
                       <td className="line-cell">{row.rightLine ?? ''}</td>
-                      <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.rightHtml }} />
+                      <td className="code-cell">{renderDiffSegments(row.rightSegments)}</td>
                     </>
                   ) : (
                     <>
                       <td className="line-cell">{row.leftLine ?? ''}</td>
-                      <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.leftHtml }} />
+                      <td className="code-cell">{renderDiffSegments(row.leftSegments)}</td>
                       <td className="line-cell">{row.rightLine ?? ''}</td>
-                      <td className="code-cell" dangerouslySetInnerHTML={{ __html: row.rightHtml }} />
+                      <td className="code-cell">{renderDiffSegments(row.rightSegments)}</td>
                     </>
                   )}
                 </tr>
@@ -489,7 +516,9 @@ export function DocumentComparePage() {
               label={`${t('common.left')} PDF`}
               doc={leftDoc}
               onFile={(f) => handleFile('left', f)}
-              onClear={() => handleClear('left')}
+              onClear={() => {
+                handleClear('left')
+              }}
             />
           </SurfaceCard>
           <SurfaceCard title={`${t('common.right')} PDF`} className="upload-surface">
@@ -497,7 +526,9 @@ export function DocumentComparePage() {
               label={`${t('common.right')} PDF`}
               doc={rightDoc}
               onFile={(f) => handleFile('right', f)}
-              onClear={() => handleClear('right')}
+              onClear={() => {
+                handleClear('right')
+              }}
             />
           </SurfaceCard>
         </SimpleGrid>

@@ -122,7 +122,9 @@ export function FormatterPage() {
       await navigator.clipboard.writeText(value)
       setCopied(true)
       setStatus(null)
-      setTimeout(() => setCopied(false), 1800)
+      setTimeout(() => {
+        setCopied(false)
+      }, 1800)
     } catch {
       setStatus({ kind: 'error', message: t('formatter.copyFailed') })
     }

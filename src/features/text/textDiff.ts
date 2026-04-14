@@ -3,6 +3,13 @@ import type { TextDiffOptions } from '../../store/sessionStore'
 
 export type DiffRowType = 'unchanged' | 'added' | 'removed' | 'changed'
 
+export type DiffSegmentKind = 'plain' | 'added' | 'removed'
+
+export type DiffSegment = {
+  text: string
+  kind: DiffSegmentKind
+}
+
 export type DiffRow = {
   id: string
   type: DiffRowType
@@ -10,8 +17,8 @@ export type DiffRow = {
   rightLine?: number
   leftText: string
   rightText: string
-  leftHtml: string
-  rightHtml: string
+  leftSegments: DiffSegment[]
+  rightSegments: DiffSegment[]
 }
 
 export type DiffStats = {
@@ -30,12 +37,6 @@ type IntralineSegment = {
   added?: boolean
   removed?: boolean
 }
-
-const escapeHtml = (value: string): string =>
-  value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
 
 const splitLines = (value: string): string[] => {
   if (!value.length) {
@@ -106,33 +107,31 @@ const buildIntralineDiff = (
   left: string,
   right: string,
   precision: TextDiffOptions['precision'],
-): { leftHtml: string; rightHtml: string } => {
+): { leftSegments: DiffSegment[]; rightSegments: DiffSegment[] } => {
   const chunks =
     precision === 'character' ? diffChars(left, right) : diffWordsWithSpace(left, right)
 
-  const leftParts: string[] = []
-  const rightParts: string[] = []
+  const leftSegments: DiffSegment[] = []
+  const rightSegments: DiffSegment[] = []
 
   chunks.forEach((chunk: IntralineSegment) => {
-    const safe = escapeHtml(chunk.value)
-
     if (chunk.removed) {
-      leftParts.push(`<mark class="intraline-removed">${safe}</mark>`)
+      leftSegments.push({ text: chunk.value, kind: 'removed' })
       return
     }
 
     if (chunk.added) {
-      rightParts.push(`<mark class="intraline-added">${safe}</mark>`)
+      rightSegments.push({ text: chunk.value, kind: 'added' })
       return
     }
 
-    leftParts.push(safe)
-    rightParts.push(safe)
+    leftSegments.push({ text: chunk.value, kind: 'plain' })
+    rightSegments.push({ text: chunk.value, kind: 'plain' })
   })
 
   return {
-    leftHtml: leftParts.join(''),
-    rightHtml: rightParts.join(''),
+    leftSegments,
+    rightSegments,
   }
 }
 
@@ -158,6 +157,8 @@ const expandDiffLines = (left: string, right: string): ExpandedLine[] => {
 }
 
 const makeRowId = (index: number): string => `row-${index}`
+const buildPlainSegments = (text: string): DiffSegment[] =>
+  text.length ? [{ text, kind: 'plain' }] : []
 
 export const computeDiff = (
   leftRaw: string,
@@ -192,8 +193,8 @@ export const computeDiff = (
         rightLine,
         leftText: current.text,
         rightText: current.text,
-        leftHtml: escapeHtml(current.text),
-        rightHtml: escapeHtml(current.text),
+        leftSegments: buildPlainSegments(current.text),
+        rightSegments: buildPlainSegments(current.text),
       })
       leftLine += 1
       rightLine += 1
@@ -233,8 +234,8 @@ export const computeDiff = (
               rightLine,
               leftText,
               rightText,
-              leftHtml: intraline.leftHtml,
-              rightHtml: intraline.rightHtml,
+              leftSegments: intraline.leftSegments,
+              rightSegments: intraline.rightSegments,
             })
             stats.changed += 1
             leftLine += 1
@@ -246,8 +247,8 @@ export const computeDiff = (
               leftLine,
               leftText,
               rightText: '',
-              leftHtml: escapeHtml(leftText),
-              rightHtml: '',
+              leftSegments: buildPlainSegments(leftText),
+              rightSegments: [],
             })
             stats.removed += 1
             leftLine += 1
@@ -258,8 +259,8 @@ export const computeDiff = (
               rightLine,
               leftText: '',
               rightText,
-              leftHtml: '',
-              rightHtml: escapeHtml(rightText),
+              leftSegments: [],
+              rightSegments: buildPlainSegments(rightText),
             })
             stats.added += 1
             rightLine += 1
@@ -276,8 +277,8 @@ export const computeDiff = (
           leftLine,
           leftText: line,
           rightText: '',
-          leftHtml: escapeHtml(line),
-          rightHtml: '',
+          leftSegments: buildPlainSegments(line),
+          rightSegments: [],
         })
         stats.removed += 1
         leftLine += 1
@@ -293,8 +294,8 @@ export const computeDiff = (
         rightLine,
         leftText: '',
         rightText: current.text,
-        leftHtml: '',
-        rightHtml: escapeHtml(current.text),
+        leftSegments: [],
+        rightSegments: buildPlainSegments(current.text),
       })
       stats.added += 1
       rightLine += 1

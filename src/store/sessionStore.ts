@@ -2,9 +2,32 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { getPreferredLocale, type SupportedLocale } from '../i18n/config'
 
-// Safari < 15.4 doesn't have crypto.randomUUID
-const randomUUID = () =>
-  typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)
+const formatUuidSegment = (bytes: Uint8Array, start: number, end: number) =>
+  Array.from(bytes.slice(start, end), (value) => value.toString(16).padStart(2, '0')).join('')
+
+// Safari < 15.4 doesn't have crypto.randomUUID, but it does expose getRandomValues.
+const randomUUID = () => {
+  const webCrypto = globalThis.crypto
+  if (typeof webCrypto?.randomUUID === 'function') {
+    return webCrypto.randomUUID()
+  }
+  if (typeof webCrypto?.getRandomValues !== 'function') {
+    throw new Error('Secure random source is unavailable')
+  }
+
+  const bytes = new Uint8Array(16)
+  webCrypto.getRandomValues(bytes)
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+
+  return [
+    formatUuidSegment(bytes, 0, 4),
+    formatUuidSegment(bytes, 4, 6),
+    formatUuidSegment(bytes, 6, 8),
+    formatUuidSegment(bytes, 8, 10),
+    formatUuidSegment(bytes, 10, 16),
+  ].join('-')
+}
 
 const getPreferredTheme = (): 'light' | 'dark' => (
   typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
@@ -81,19 +104,15 @@ export type DocumentSession = {
 }
 
 export type SpreadsheetSession = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  leftFile: any | null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  rightFile: any | null
+  leftFile: unknown | null
+  rightFile: unknown | null
   leftSheet: string
   rightSheet: string
 }
 
 export type FolderSession = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  leftFolder: any | null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  rightFolder: any | null
+  leftFolder: unknown | null
+  rightFolder: unknown | null
 }
 
 type SessionState = {

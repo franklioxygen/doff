@@ -100,8 +100,20 @@ function writeVersionCheckCache(cache: VersionCheckCache) {
   }
 }
 
-async function fetchGithubJson<T>(url: string, signal: AbortSignal) {
-  const response = await fetch(url, {
+function normalizeReleaseUrl(url: string | undefined, fallback: string) {
+  try {
+    const parsed = new URL(url ?? fallback)
+    const isTrustedGithubRelease = parsed.origin === 'https://github.com'
+      && parsed.pathname.startsWith('/franklioxygen/doff/releases')
+
+    return isTrustedGithubRelease ? parsed.toString() : fallback
+  } catch {
+    return fallback
+  }
+}
+
+async function fetchLatestRelease(signal: AbortSignal) {
+  const response = await fetch(GITHUB_LATEST_RELEASE_API, {
     headers: {
       Accept: 'application/vnd.github+json',
     },
@@ -113,19 +125,35 @@ async function fetchGithubJson<T>(url: string, signal: AbortSignal) {
     throw new Error(`GitHub version check failed with status ${response.status}`)
   }
 
-  return (await response.json()) as T
+  return (await response.json()) as GithubReleaseResponse
+}
+
+async function fetchLatestTags(signal: AbortSignal) {
+  const response = await fetch(GITHUB_TAGS_API, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+    },
+    signal,
+  })
+
+  if (response.status === 404) return null
+  if (!response.ok) {
+    throw new Error(`GitHub version check failed with status ${response.status}`)
+  }
+
+  return (await response.json()) as GithubTagResponse[]
 }
 
 async function fetchLatestGithubVersion(signal: AbortSignal) {
-  const latestRelease = await fetchGithubJson<GithubReleaseResponse>(GITHUB_LATEST_RELEASE_API, signal)
+  const latestRelease = await fetchLatestRelease(signal)
   if (latestRelease?.tag_name) {
     return {
       latestVersion: normalizeVersion(latestRelease.tag_name),
-      releaseUrl: latestRelease.html_url || `${DOFF_GITHUB_URL}/releases/latest`,
+      releaseUrl: normalizeReleaseUrl(latestRelease.html_url, `${DOFF_GITHUB_URL}/releases/latest`),
     }
   }
 
-  const latestTags = await fetchGithubJson<GithubTagResponse[]>(GITHUB_TAGS_API, signal)
+  const latestTags = await fetchLatestTags(signal)
   const latestTag = latestTags?.[0]
   if (!latestTag?.name) return null
 
@@ -156,8 +184,7 @@ export function FooterVersionInfo() {
         try {
           const latestVersion = await fetchLatestGithubVersion(abortController.signal)
           const hasUpdate = Boolean(
-            latestVersion
-            && latestVersion.releaseUrl
+            latestVersion?.releaseUrl
             && isNewerVersion(latestVersion.latestVersion, CURRENT_VERSION),
           )
 
