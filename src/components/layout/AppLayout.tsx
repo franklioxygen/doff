@@ -6,39 +6,20 @@ import {
   Container,
   Drawer,
   Group,
-  NavLink,
   Stack,
   Text,
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import {
-  IconAdjustments,
-  IconFileDescription,
-  IconFileSpreadsheet,
-  IconFolders,
   IconMoonStars,
-  IconPhotoSpark,
-  IconShieldLock,
-  IconSparkles,
   IconSunHigh,
-  IconTextSize,
 } from '@tabler/icons-react'
 import { NavLink as RouterNavLink, Outlet, useLocation } from 'react-router-dom'
-import { useSessionStore } from '../../store/sessionStore'
 import { useI18n } from '../../i18n'
+import { useSessionStore } from '../../store/sessionStore'
+import { AppNavigationLinks } from './AppNavigationLinks'
 import { Footer } from './Footer'
 import { PlaceholderPage } from './PlaceholderPage'
-
-const NAV_ITEMS = [
-  { labelKey: 'nav.text', to: '/text', icon: IconTextSize },
-  { labelKey: 'nav.formatter', to: '/formatter', icon: IconSparkles },
-  { labelKey: 'nav.images', to: '/images', icon: IconPhotoSpark },
-  { labelKey: 'nav.documents', to: '/documents', icon: IconFileDescription },
-  { labelKey: 'nav.spreadsheets', to: '/spreadsheets', icon: IconFileSpreadsheet },
-  { labelKey: 'nav.folders', to: '/folders', icon: IconFolders },
-  { labelKey: 'nav.settings', to: '/settings', icon: IconAdjustments },
-  { labelKey: 'nav.aboutPrivacy', to: '/about/privacy', icon: IconShieldLock },
-] as const
 
 export function AppLayout() {
   const theme = useSessionStore((state) => state.theme)
@@ -46,9 +27,6 @@ export function AppLayout() {
   const { t } = useI18n()
   const location = useLocation()
   const [opened, { close, toggle }] = useDisclosure(false)
-
-  const isActive = (to: string) =>
-    location.pathname === to || location.pathname.startsWith(`${to}/`)
 
   return (
     <>
@@ -79,18 +57,7 @@ export function AppLayout() {
               </Group>
 
               <Group gap="xs" visibleFrom="sm" wrap="nowrap" aria-label={t('app.primaryNav')}>
-              {NAV_ITEMS.map((item) => (
-                <NavLink
-                  key={item.to}
-                  component={RouterNavLink}
-                  to={item.to}
-                  label={t(item.labelKey)}
-                  leftSection={<item.icon size={16} stroke={1.8} />}
-                  active={isActive(item.to)}
-                  className="shell-nav-link"
-                  variant="filled"
-                />
-              ))}
+                <AppNavigationLinks currentPath={location.pathname} className="shell-nav-link" />
               </Group>
 
               <Group gap="xs" wrap="nowrap">
@@ -129,24 +96,13 @@ export function AppLayout() {
           hiddenFrom="sm"
         >
           <Stack gap="xs">
-            {NAV_ITEMS.map((item) => (
-              <NavLink
-                key={item.to}
-                component={RouterNavLink}
-                to={item.to}
-                label={t(item.labelKey)}
-                leftSection={<item.icon size={16} stroke={1.8} />}
-                active={isActive(item.to)}
-                onClick={close}
-                variant="filled"
-              />
-            ))}
+            <AppNavigationLinks currentPath={location.pathname} onNavigate={close} />
           </Stack>
         </Drawer>
 
         <AppShell.Main>
           <Container size={1600} className="app-main-container">
-            <main id="main-content" className="workspace" role="main">
+            <main id="main-content" className="workspace">
               <Suspense
                 fallback={(
                   <PlaceholderPage

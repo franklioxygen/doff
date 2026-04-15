@@ -1,10 +1,11 @@
 import { Anchor, Group, Text } from '@mantine/core'
 import { IconBrandGithub } from '@tabler/icons-react'
-import { DOFF_GITHUB_URL, FooterVersionInfo } from './FooterVersionInfo'
+import { FooterVersionInfo } from './FooterVersionInfo'
+import { DOFF_GITHUB_URL } from './footerVersionInfoUtils'
 
 export function Footer() {
   return (
-    <footer className="app-footer" role="contentinfo">
+    <footer className="app-footer">
       <div className="footer-row">
         <Group gap="sm" wrap="wrap" className="footer-meta">
           <Anchor

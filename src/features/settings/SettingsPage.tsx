@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, type ReactNode } from 'react'
 import {
   Button,
   Checkbox,
@@ -28,6 +28,74 @@ import type { SupportedLocale } from '../../i18n/config'
 import { PageHero } from '../../components/ui/PageHero'
 import { StatBadge } from '../../components/ui/StatBadge'
 import { SurfaceCard } from '../../components/ui/SurfaceCard'
+
+type SelectOption = {
+  value: string
+  label: string
+}
+
+type SettingsSelectFieldProps = {
+  label: string
+  value: string
+  data: SelectOption[]
+  searchable?: boolean
+  onChange: (value: string) => void
+}
+
+type SessionAction = {
+  label: string
+  variant: 'default' | 'light'
+  color?: string
+  leftSection?: ReactNode
+  onClick: () => void
+}
+
+type BooleanTextDefaultKey =
+  | 'realTime'
+  | 'disableWrap'
+  | 'ignoreLeadingTrailingWhitespace'
+  | 'ignoreAllWhitespace'
+  | 'ignoreCase'
+  | 'ignoreBlankLines'
+  | 'trimTrailingWhitespace'
+  | 'normalizeUnicode'
+
+const SettingsSelectField = ({
+  label,
+  value,
+  data,
+  searchable,
+  onChange,
+}: SettingsSelectFieldProps) => (
+  <div>
+    <Text size="sm" fw={600} mb={8}>
+      {label}
+    </Text>
+    <Select
+      searchable={searchable}
+      value={value}
+      data={data}
+      onChange={(nextValue) => {
+        if (nextValue) {
+          onChange(nextValue)
+        }
+      }}
+    />
+  </div>
+)
+
+const SettingsMetaItem = ({
+  label,
+  value,
+}: {
+  label: string
+  value: string
+}) => (
+  <div className="settings-meta-item">
+    <Text size="xs" c="dimmed">{label}</Text>
+    <Text fw={600}>{value}</Text>
+  </div>
+)
 
 export function SettingsPage() {
   const theme = useSessionStore((state) => state.theme)
@@ -59,6 +127,134 @@ export function SettingsPage() {
     }
   }, [resetAllLocalData, t])
 
+  const appearanceFields: SettingsSelectFieldProps[] = [
+    {
+      label: t('settings.themeLabel'),
+      value: theme,
+      onChange: (value) => {
+        setTheme(value as 'light' | 'dark')
+      },
+      data: [
+        { value: 'light', label: t('common.light') },
+        { value: 'dark', label: t('common.dark') },
+      ],
+    },
+    {
+      label: t('settings.languageLabel'),
+      value: locale,
+      onChange: (value) => {
+        setLocale(value as SupportedLocale)
+      },
+      data: locales.map((entry) => ({
+        value: entry,
+        label: localeLabels[entry],
+      })),
+    },
+  ]
+
+  const sessionMetaItems = [
+    {
+      label: t('settings.restoreStatus'),
+      value: rememberTextSession ? t('settings.restoreOn') : t('settings.restoreOff'),
+    },
+    {
+      label: t('settings.draftStatus'),
+      value: hasDraft ? t('settings.draftAvailable') : t('settings.noSavedDraft'),
+    },
+    ...(hasDraft
+      ? [{ label: t('settings.lastUpdated'), value: formatDateTime(textSession.updatedAt) }]
+      : []),
+  ]
+
+  const sessionActions: SessionAction[] = [
+    {
+      label: t('settings.applyDefaults'),
+      variant: 'light',
+      onClick: applyTextDefaultsToTextSession,
+    },
+    {
+      label: t('settings.clearTextDraft'),
+      variant: 'default',
+      onClick: clearTextSession,
+    },
+    {
+      label: t('settings.resetTextDefaults'),
+      variant: 'default',
+      onClick: resetTextDefaults,
+    },
+    {
+      label: t('settings.resetAllLocalData'),
+      variant: 'light',
+      color: 'red',
+      leftSection: <IconTrash size={16} stroke={1.8} />,
+      onClick: handleResetAll,
+    },
+  ]
+
+  const textDefaultSelectFields: SettingsSelectFieldProps[] = [
+    {
+      label: t('settings.defaultViewMode'),
+      value: textDefaults.viewMode,
+      onChange: (value) => {
+        setTextDefaults({ viewMode: value as DiffViewMode })
+      },
+      data: [
+        { value: 'split', label: t('common.split') },
+        { value: 'unified', label: t('common.unified') },
+      ],
+    },
+    {
+      label: t('settings.defaultPrecision'),
+      value: textDefaults.precision,
+      onChange: (value) => {
+        setTextDefaults({ precision: value as DiffPrecision })
+      },
+      data: [
+        { value: 'word', label: t('common.word') },
+        { value: 'character', label: t('common.character') },
+      ],
+    },
+    {
+      label: t('settings.defaultSyntax'),
+      value: textDefaults.language,
+      searchable: true,
+      onChange: (value) => {
+        setTextDefaults({ language: value })
+      },
+      data: TEXT_LANGUAGES.map((language) => ({ value: language, label: language })),
+    },
+    {
+      label: t('settings.defaultTabPolicy'),
+      value: textDefaults.tabSpaceMode,
+      onChange: (value) => {
+        setTextDefaults({ tabSpaceMode: value as TabSpaceMode })
+      },
+      data: [
+        { value: 'none', label: t('settings.noTabNormalization') },
+        { value: 'tabsToSpaces', label: t('settings.tabsToSpaces') },
+        { value: 'spacesToTabs', label: t('settings.spacesToTabs') },
+      ],
+    },
+  ]
+
+  const booleanTextDefaultFields: Array<{ key: BooleanTextDefaultKey; label: string }> = [
+    { key: 'realTime', label: t('settings.realTime') },
+    { key: 'disableWrap', label: t('settings.disableWrap') },
+    { key: 'ignoreLeadingTrailingWhitespace', label: t('settings.ignoreLeadingTrailingWhitespace') },
+    { key: 'ignoreAllWhitespace', label: t('settings.ignoreAllWhitespace') },
+    { key: 'ignoreCase', label: t('settings.ignoreCase') },
+    { key: 'ignoreBlankLines', label: t('settings.ignoreBlankLines') },
+    { key: 'trimTrailingWhitespace', label: t('settings.trimTrailingWhitespace') },
+    { key: 'normalizeUnicode', label: t('settings.normalizeUnicode') },
+  ]
+
+  const updateBooleanTextDefault = useCallback(
+    (key: BooleanTextDefaultKey, checked: boolean) => {
+      setTextDefaults({ [key]: checked } as Pick<typeof textDefaults, BooleanTextDefaultKey>)
+    },
+    [setTextDefaults],
+  )
+
   return (
     <section className="settings-page">
       <Stack gap="lg">
@@ -81,32 +277,9 @@ export function SettingsPage() {
             headerAside={<IconBrush size={18} stroke={1.8} />}
           >
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <div>
-                <Text size="sm" fw={600} mb={8}>
-                  {t('settings.themeLabel')}
-                </Text>
-                <Select
-                  value={theme}
-                  onChange={(value) => value && setTheme(value as 'light' | 'dark')}
-                  data={[
-                    { value: 'light', label: t('common.light') },
-                    { value: 'dark', label: t('common.dark') },
-                  ]}
-                />
-              </div>
-              <div>
-                <Text size="sm" fw={600} mb={8}>
-                  {t('settings.languageLabel')}
-                </Text>
-                <Select
-                  value={locale}
-                  onChange={(value) => value && setLocale(value as SupportedLocale)}
-                  data={locales.map((entry) => ({
-                    value: entry,
-                    label: localeLabels[entry],
-                  }))}
-                />
-              </div>
+              {appearanceFields.map((field) => (
+                <SettingsSelectField key={field.label} {...field} />
+              ))}
             </SimpleGrid>
           </SurfaceCard>
 
@@ -125,40 +298,23 @@ export function SettingsPage() {
                 {t('settings.rememberTextSessionHint')}
               </Text>
               <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-                <div className="settings-meta-item">
-                  <Text size="xs" c="dimmed">{t('settings.restoreStatus')}</Text>
-                  <Text fw={600}>{rememberTextSession ? t('settings.restoreOn') : t('settings.restoreOff')}</Text>
-                </div>
-                <div className="settings-meta-item">
-                  <Text size="xs" c="dimmed">{t('settings.draftStatus')}</Text>
-                  <Text fw={600}>{hasDraft ? t('settings.draftAvailable') : t('settings.noSavedDraft')}</Text>
-                </div>
-                {hasDraft && (
-                  <div className="settings-meta-item">
-                    <Text size="xs" c="dimmed">{t('settings.lastUpdated')}</Text>
-                    <Text fw={600}>{formatDateTime(textSession.updatedAt)}</Text>
-                  </div>
-                )}
+                {sessionMetaItems.map((item) => (
+                  <SettingsMetaItem key={item.label} label={item.label} value={item.value} />
+                ))}
               </SimpleGrid>
               <Group gap="sm" wrap="wrap">
-                <Button type="button" variant="light" onClick={applyTextDefaultsToTextSession}>
-                  {t('settings.applyDefaults')}
-                </Button>
-                <Button type="button" variant="default" onClick={clearTextSession}>
-                  {t('settings.clearTextDraft')}
-                </Button>
-                <Button type="button" variant="default" onClick={resetTextDefaults}>
-                  {t('settings.resetTextDefaults')}
-                </Button>
-                <Button
-                  type="button"
-                  color="red"
-                  variant="light"
-                  leftSection={<IconTrash size={16} stroke={1.8} />}
-                  onClick={handleResetAll}
-                >
-                  {t('settings.resetAllLocalData')}
-                </Button>
+                {sessionActions.map((action) => (
+                  <Button
+                    key={action.label}
+                    type="button"
+                    variant={action.variant}
+                    color={action.color}
+                    leftSection={action.leftSection}
+                    onClick={action.onClick}
+                  >
+                    {action.label}
+                  </Button>
+                ))}
               </Group>
             </Stack>
           </SurfaceCard>
@@ -171,100 +327,22 @@ export function SettingsPage() {
         >
           <Stack gap="lg">
             <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="md">
-              <div>
-                <Text size="sm" fw={600} mb={8}>
-                  {t('settings.defaultViewMode')}
-                </Text>
-                <Select
-                  value={textDefaults.viewMode}
-                  onChange={(value) => value && setTextDefaults({ viewMode: value as DiffViewMode })}
-                  data={[
-                    { value: 'split', label: t('common.split') },
-                    { value: 'unified', label: t('common.unified') },
-                  ]}
-                />
-              </div>
-              <div>
-                <Text size="sm" fw={600} mb={8}>
-                  {t('settings.defaultPrecision')}
-                </Text>
-                <Select
-                  value={textDefaults.precision}
-                  onChange={(value) => value && setTextDefaults({ precision: value as DiffPrecision })}
-                  data={[
-                    { value: 'word', label: t('common.word') },
-                    { value: 'character', label: t('common.character') },
-                  ]}
-                />
-              </div>
-              <div>
-                <Text size="sm" fw={600} mb={8}>
-                  {t('settings.defaultSyntax')}
-                </Text>
-                <Select
-                  searchable
-                  value={textDefaults.language}
-                  onChange={(value) => value && setTextDefaults({ language: value })}
-                  data={TEXT_LANGUAGES.map((language) => ({ value: language, label: language }))}
-                />
-              </div>
-              <div>
-                <Text size="sm" fw={600} mb={8}>
-                  {t('settings.defaultTabPolicy')}
-                </Text>
-                <Select
-                  value={textDefaults.tabSpaceMode}
-                  onChange={(value) => value && setTextDefaults({ tabSpaceMode: value as TabSpaceMode })}
-                  data={[
-                    { value: 'none', label: t('settings.noTabNormalization') },
-                    { value: 'tabsToSpaces', label: t('settings.tabsToSpaces') },
-                    { value: 'spacesToTabs', label: t('settings.spacesToTabs') },
-                  ]}
-                />
-              </div>
+              {textDefaultSelectFields.map((field) => (
+                <SettingsSelectField key={field.label} {...field} />
+              ))}
             </SimpleGrid>
 
             <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="md">
-              <Checkbox
-                checked={textDefaults.realTime}
-                label={t('settings.realTime')}
-                onChange={(event) => setTextDefaults({ realTime: event.currentTarget.checked })}
-              />
-              <Checkbox
-                checked={textDefaults.disableWrap}
-                label={t('settings.disableWrap')}
-                onChange={(event) => setTextDefaults({ disableWrap: event.currentTarget.checked })}
-              />
-              <Checkbox
-                checked={textDefaults.ignoreLeadingTrailingWhitespace}
-                label={t('settings.ignoreLeadingTrailingWhitespace')}
-                onChange={(event) => setTextDefaults({ ignoreLeadingTrailingWhitespace: event.currentTarget.checked })}
-              />
-              <Checkbox
-                checked={textDefaults.ignoreAllWhitespace}
-                label={t('settings.ignoreAllWhitespace')}
-                onChange={(event) => setTextDefaults({ ignoreAllWhitespace: event.currentTarget.checked })}
-              />
-              <Checkbox
-                checked={textDefaults.ignoreCase}
-                label={t('settings.ignoreCase')}
-                onChange={(event) => setTextDefaults({ ignoreCase: event.currentTarget.checked })}
-              />
-              <Checkbox
-                checked={textDefaults.ignoreBlankLines}
-                label={t('settings.ignoreBlankLines')}
-                onChange={(event) => setTextDefaults({ ignoreBlankLines: event.currentTarget.checked })}
-              />
-              <Checkbox
-                checked={textDefaults.trimTrailingWhitespace}
-                label={t('settings.trimTrailingWhitespace')}
-                onChange={(event) => setTextDefaults({ trimTrailingWhitespace: event.currentTarget.checked })}
-              />
-              <Checkbox
-                checked={textDefaults.normalizeUnicode}
-                label={t('settings.normalizeUnicode')}
-                onChange={(event) => setTextDefaults({ normalizeUnicode: event.currentTarget.checked })}
-              />
+              {booleanTextDefaultFields.map((field) => (
+                <Checkbox
+                  key={field.key}
+                  checked={textDefaults[field.key]}
+                  label={field.label}
+                  onChange={(event) => {
+                    updateBooleanTextDefault(field.key, event.currentTarget.checked)
+                  }}
+                />
+              ))}
             </SimpleGrid>
           </Stack>
         </SurfaceCard>
