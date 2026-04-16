@@ -20,6 +20,10 @@
   <a href="https://doff-franklioxygen.vercel.app"><strong>Live Demo</strong></a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/franklioxygen/doff/releases/latest"><img src="https://img.shields.io/github/v/release/franklioxygen/doff?label=latest%20release" alt="Latest release"></a>
+</p>
+
 ![Screenshot 2026-03-23 at 11 43 06 AM](https://github.com/user-attachments/assets/93ef493a-8a92-420b-924e-b9cbcd1dc551)
 
 ## Features
@@ -47,7 +51,7 @@ doff can be used in two ways: as a **standalone app** installed directly on your
 
 ### Standalone App
 
-Download the latest installer for your platform from the [Releases](https://github.com/franklioxygen/doff/releases) page. Available for macOS, Windows, and Linux.
+Download the latest offline standalone package for your platform from the [Latest Release](https://github.com/franklioxygen/doff/releases/latest) page. These release assets are desktop installers that run locally on your device without Docker or a hosted service. You can also browse all published packages on [Releases](https://github.com/franklioxygen/doff/releases). Available for macOS, Windows, and Linux.
 
 You can also visit the [Live Demo](https://doff-franklioxygen.vercel.app) and install it as a Progressive Web App from your browser.
 

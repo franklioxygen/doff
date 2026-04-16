@@ -20,6 +20,10 @@
   <a href="https://doff-franklioxygen.vercel.app"><strong>在线体验</strong></a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/franklioxygen/doff/releases/latest"><img src="https://img.shields.io/github/v/release/franklioxygen/doff?label=%E6%9C%80%E6%96%B0%20release" alt="最新 release"></a>
+</p>
+
 ![Screenshot 2026-03-23 at 11 54 06 AM](https://github.com/user-attachments/assets/cf698d43-ee57-452c-8855-89ca12d344dc)
 
 ## 功能特性
@@ -47,7 +51,7 @@ doff 提供两种使用方式：作为**独立应用**直接安装到设备上�
 
 ### 独立应用
 
-从 [Releases](https://github.com/franklioxygen/doff/releases) 页面下载适合你平台的最新安装包，支持 macOS、Windows 和 Linux。
+从 [Latest Release](https://github.com/franklioxygen/doff/releases/latest) 页面下载适合你平台的最新离线独立运行包。这些 release 资产是可直接在本机运行的桌面安装包，不依赖 Docker，也不需要托管服务。如果需要查看所有已发布版本，也可以访问 [Releases](https://github.com/franklioxygen/doff/releases) 页面。支持 macOS、Windows 和 Linux。
 
 你也可以访问[在线体验](https://doff-franklioxygen.vercel.app)，通过浏览器将其安装为渐进式 Web 应用。
 

@@ -1,17 +1,14 @@
 import { useCallback, useMemo, useState } from 'react'
 import {
-  ActionIcon,
-  Button,
   Group,
+  Button,
   Select,
   SimpleGrid,
   Stack,
   Text,
 } from '@mantine/core'
 import {
-  IconArrowsLeftRight,
   IconFileSpreadsheet,
-  IconTrash,
   IconUpload,
 } from '@tabler/icons-react'
 import * as XLSX from 'xlsx'
@@ -21,6 +18,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHero } from '../../components/ui/PageHero'
 import { StatBadge } from '../../components/ui/StatBadge'
 import { SurfaceCard } from '../../components/ui/SurfaceCard'
+import { CompareActionButtons } from '../../components/ui/CompareActionButtons'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -169,6 +167,26 @@ function compareSheets(left: SheetData, right: SheetData): SheetDiff {
 
 // ─── Drop Zone ───────────────────────────────────────────────────────────────
 
+function SpreadsheetFileIcon({ size = 36, className }: { size?: number; className?: string }) {
+  return (
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="3" y1="15" x2="21" y2="15" />
+      <line x1="9" y1="3" x2="9" y2="21" />
+    </svg>
+  )
+}
+
 function DropZone({
   inputId,
   label,
@@ -242,12 +260,7 @@ function DropZone({
       />
       {file ? (
         <div className="upload-preview upload-preview-compact">
-          <svg className="sz-file-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <line x1="3" y1="9" x2="21" y2="9" />
-            <line x1="3" y1="15" x2="21" y2="15" />
-            <line x1="9" y1="3" x2="9" y2="21" />
-          </svg>
+          <SpreadsheetFileIcon size={28} className="sz-file-icon" />
           <Stack gap={2} className="upload-preview-info">
             <Text fw={600}>{file.name}</Text>
             <Text size="sm" c="dimmed">
@@ -264,12 +277,7 @@ function DropZone({
         </div>
       ) : (
         <label htmlFor={inputId} className="upload-drop-zone-empty">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <line x1="3" y1="9" x2="21" y2="9" />
-            <line x1="3" y1="15" x2="21" y2="15" />
-            <line x1="9" y1="3" x2="9" y2="21" />
-          </svg>
+          <SpreadsheetFileIcon />
           <Text fw={600}>{label}</Text>
           <Text c="dimmed">{t('spreadsheets.dropHint')}</Text>
           <Button component="span" variant="light" leftSection={<IconUpload size={16} stroke={1.8} />}>
@@ -502,28 +510,14 @@ export function SpreadsheetComparePage() {
               : t('spreadsheets.selectSheets')
           }
           headerAside={(
-            <Group gap="xs">
-              <ActionIcon
-                type="button"
-                size="lg"
-                variant="light"
-                onClick={swap}
-                disabled={!leftFile || !rightFile}
-                title={t('spreadsheets.swapTitle')}
-              >
-                <IconArrowsLeftRight size={18} stroke={1.8} />
-              </ActionIcon>
-              <ActionIcon
-                type="button"
-                size="lg"
-                variant="default"
-                onClick={clear}
-                disabled={!leftFile && !rightFile}
-                title={t('spreadsheets.clearTitle')}
-              >
-                <IconTrash size={18} stroke={1.8} />
-              </ActionIcon>
-            </Group>
+            <CompareActionButtons
+              onSwap={swap}
+              onClear={clear}
+              swapDisabled={!leftFile || !rightFile}
+              clearDisabled={!leftFile && !rightFile}
+              swapTitle={t('spreadsheets.swapTitle')}
+              clearTitle={t('spreadsheets.clearTitle')}
+            />
           )}
         >
           {leftFile && rightFile && (

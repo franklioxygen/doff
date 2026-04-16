@@ -1,24 +1,23 @@
 import { useCallback, useMemo, useState } from 'react'
 import {
-  ActionIcon,
-  Button,
   Group,
+  Button,
   Stack,
   Text,
 } from '@mantine/core'
 import {
-  IconArrowsLeftRight,
   IconFolderOpen,
   IconFolders,
-  IconTrash,
 } from '@tabler/icons-react'
-import { computeDiff, type DiffSegment } from '../text/textDiff'
+import { computeDiff } from '../text/textDiff'
 import { useSessionStore, type FolderSession } from '../../store/sessionStore'
 import { useI18n } from '../../i18n'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHero } from '../../components/ui/PageHero'
 import { StatBadge } from '../../components/ui/StatBadge'
 import { SurfaceCard } from '../../components/ui/SurfaceCard'
+import { DiffSegments } from '../text/DiffSegments'
+import { CompareActionButtons } from '../../components/ui/CompareActionButtons'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -80,23 +79,6 @@ function isTextFile(name: string): boolean {
   const knownText = ['makefile', 'dockerfile', 'rakefile', 'gemfile', 'procfile']
   return knownText.includes(lower)
 }
-
-const renderDiffSegments = (segments: DiffSegment[]) => (
-  <>
-    {segments.map((segment, index) => (
-      segment.kind === 'plain'
-        ? <span key={`plain-${index}`}>{segment.text}</span>
-        : (
-          <mark
-            key={`${segment.kind}-${index}`}
-            className={segment.kind === 'added' ? 'intraline-added' : 'intraline-removed'}
-          >
-            {segment.text}
-          </mark>
-        )
-    ))}
-  </>
-)
 
 async function readFolderHandle(handle: FileSystemDirectoryHandle, label: string, basePath = ''): Promise<LoadedFolder> {
   const entries = new Map<string, FileEntry>()
@@ -502,8 +484,8 @@ function FileList({ diff }: { diff: FolderDiffResult }) {
                       <span className="diff-row-marker">
                         {row.type === 'unchanged' ? ' ' : row.type === 'added' ? '+' : row.type === 'removed' ? '-' : '~'}
                       </span>
-                      <span className="diff-row-left">{renderDiffSegments(row.leftSegments)}</span>
-                      <span className="diff-row-right">{renderDiffSegments(row.rightSegments)}</span>
+                      <span className="diff-row-left"><DiffSegments segments={row.leftSegments} /></span>
+                      <span className="diff-row-right"><DiffSegments segments={row.rightSegments} /></span>
                     </div>
                   ))}
                   {entry.diffRows.length > 100 && (
@@ -606,28 +588,14 @@ export function FolderComparePage() {
               : t('folders.emptyDescription')
           }
           headerAside={(
-            <Group gap="xs">
-              <ActionIcon
-                type="button"
-                size="lg"
-                variant="light"
-                onClick={swap}
-                disabled={!leftFolder || !rightFolder}
-                title={t('folders.swapTitle')}
-              >
-                <IconArrowsLeftRight size={18} stroke={1.8} />
-              </ActionIcon>
-              <ActionIcon
-                type="button"
-                size="lg"
-                variant="default"
-                onClick={clear}
-                disabled={!leftFolder && !rightFolder}
-                title={t('folders.clearTitle')}
-              >
-                <IconTrash size={18} stroke={1.8} />
-              </ActionIcon>
-            </Group>
+            <CompareActionButtons
+              onSwap={swap}
+              onClear={clear}
+              swapDisabled={!leftFolder || !rightFolder}
+              clearDisabled={!leftFolder && !rightFolder}
+              swapTitle={t('folders.swapTitle')}
+              clearTitle={t('folders.clearTitle')}
+            />
           )}
         >
           {diff && <FileList diff={diff} />}

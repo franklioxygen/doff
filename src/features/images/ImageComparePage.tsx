@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   useCallback,
   useEffect,
   useRef,
@@ -31,6 +32,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHero } from '../../components/ui/PageHero'
 import { StatBadge } from '../../components/ui/StatBadge'
 import { SurfaceCard } from '../../components/ui/SurfaceCard'
+import { UploadPreviewActions } from '../../components/ui/UploadPreviewActions'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -73,13 +75,41 @@ const formatBytes = (n: number): string => {
 
 const MATCH_OPTIONS = { threshold: 0.1 }
 const DEFAULT_TRANSFORM = { tx: 0, ty: 0, scale: 1 }
+type ViewTransform = typeof DEFAULT_TRANSFORM
+
+const getComparisonSize = (left: ImageInfo | ImageBitmap, right: ImageInfo | ImageBitmap) => ({
+  width: Math.max(left.width, right.width),
+  height: Math.max(left.height, right.height),
+})
+
+const prepareComparisonCanvas = (
+  canvas: HTMLCanvasElement,
+  left: ImageInfo | ImageBitmap,
+  right: ImageInfo | ImageBitmap,
+) => {
+  const { width, height } = getComparisonSize(left, right)
+  canvas.width = width
+  canvas.height = height
+
+  return {
+    context: getCanvasContext(canvas),
+    width,
+    height,
+  }
+}
+
+const getTransformCanvasStyle = (transform: ViewTransform): CSSProperties => ({
+  maxWidth: '100%',
+  display: 'block',
+  transform: `translate(${transform.tx}px, ${transform.ty}px) scale(${transform.scale})`,
+  transformOrigin: 'top left',
+})
 
 const computeDiffPercent = (
   left: ImageBitmap,
   right: ImageBitmap,
 ): number => {
-  const w = Math.max(left.width, right.width)
-  const h = Math.max(left.height, right.height)
+  const { width: w, height: h } = getComparisonSize(left, right)
   const c1 = document.createElement('canvas')
   const c2 = document.createElement('canvas')
   c1.width = w; c1.height = h
@@ -111,6 +141,7 @@ const DropZone = ({ label, image, onFile, side }: DropZoneProps) => {
   const { t } = useI18n()
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
+  const openFilePicker = () => inputRef.current?.click()
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -142,17 +173,12 @@ const DropZone = ({ label, image, onFile, side }: DropZoneProps) => {
               {image.width}×{image.height} · {formatBytes(image.size)}
             </Text>
           </Stack>
-          <Group gap="xs" className="upload-preview-actions">
-            <Button type="button" variant="light" onClick={() => inputRef.current?.click()}>
-              {t('common.replace')}
-            </Button>
-            <Button type="button" variant="default" onClick={() => {
-              onFile(null)
-            }}
-            >
-              {t('common.clear')}
-            </Button>
-          </Group>
+          <UploadPreviewActions
+            replaceLabel={t('common.replace')}
+            clearLabel={t('common.clear')}
+            onReplace={openFilePicker}
+            onClear={() => { onFile(null) }}
+          />
         </div>
       ) : (
         <div
@@ -162,10 +188,10 @@ const DropZone = ({ label, image, onFile, side }: DropZoneProps) => {
             setDragging(false)
           }}
           onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
+          onClick={openFilePicker}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter') inputRef.current?.click() }}
+          onKeyDown={(e) => { if (e.key === 'Enter') openFilePicker() }}
           aria-label={t('images.dropZoneAria', { label })}
         >
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
@@ -180,7 +206,7 @@ const DropZone = ({ label, image, onFile, side }: DropZoneProps) => {
             type="button"
             variant="light"
             leftSection={<IconUpload size={16} stroke={1.8} />}
-            onClick={(e) => { e.stopPropagation(); inputRef.current?.click() }}
+            onClick={(e) => { e.stopPropagation(); openFilePicker() }}
           >
             {t('common.openFile')}
           </Button>
@@ -288,7 +314,7 @@ const ViewCanvas = ({ image, style }: ViewCanvasProps) => {
 type DiffCanvasProps = {
   left: ImageInfo | null
   right: ImageInfo | null
-  transform: { tx: number; ty: number; scale: number }
+  transform: ViewTransform
 }
 
 const DiffCanvas = ({ left, right, transform }: DiffCanvasProps) => {
@@ -297,25 +323,21 @@ const DiffCanvas = ({ left, right, transform }: DiffCanvasProps) => {
   const draw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || !left || !right) return
-    const w = Math.max(left.width, right.width)
-    const h = Math.max(left.height, right.height)
-    canvas.width = w
-    canvas.height = h
-    const ctx = getCanvasContext(canvas)
+    const { context, width, height } = prepareComparisonCanvas(canvas, left, right)
 
     const c1 = document.createElement('canvas')
     const c2 = document.createElement('canvas')
-    c1.width = w; c1.height = h
-    c2.width = w; c2.height = h
+    c1.width = width; c1.height = height
+    c2.width = width; c2.height = height
     const leftContext = getCanvasContext(c1)
     const rightContext = getCanvasContext(c2)
     leftContext.drawImage(left.bitmap, 0, 0)
     rightContext.drawImage(right.bitmap, 0, 0)
-    const d1 = leftContext.getImageData(0, 0, w, h)
-    const d2 = rightContext.getImageData(0, 0, w, h)
-    const out = ctx.createImageData(w, h)
-    pixelmatch(d1.data, d2.data, out.data, w, h, { threshold: 0.1 })
-    ctx.putImageData(out, 0, 0)
+    const d1 = leftContext.getImageData(0, 0, width, height)
+    const d2 = rightContext.getImageData(0, 0, width, height)
+    const out = context.createImageData(width, height)
+    pixelmatch(d1.data, d2.data, out.data, width, height, MATCH_OPTIONS)
+    context.putImageData(out, 0, 0)
   }, [left, right])
 
   useEffect(() => {
@@ -326,12 +348,7 @@ const DiffCanvas = ({ left, right, transform }: DiffCanvasProps) => {
     <div className="view-canvas-container" style={{ cursor: 'default' }}>
       <canvas
         ref={canvasRef}
-        style={{
-          maxWidth: '100%',
-          display: 'block',
-          transform: `translate(${transform.tx}px, ${transform.ty}px) scale(${transform.scale})`,
-          transformOrigin: 'top left',
-        }}
+        style={getTransformCanvasStyle(transform)}
       />
     </div>
   )
@@ -344,7 +361,7 @@ type SliderCanvasProps = {
   right: ImageInfo | null
   sliderPct: number
   mode: ImageCompareMode
-  transform: { tx: number; ty: number; scale: number }
+  transform: ViewTransform
 }
 
 const SliderCanvas = ({ left, right, sliderPct, mode, transform }: SliderCanvasProps) => {
@@ -355,11 +372,7 @@ const SliderCanvas = ({ left, right, sliderPct, mode, transform }: SliderCanvasP
   const draw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || !left || !right) return
-    const w = Math.max(left.width, right.width)
-    const h = Math.max(left.height, right.height)
-    canvas.width = w
-    canvas.height = h
-    const ctx = getCanvasContext(canvas)
+    const { context: ctx, width: w, height: h } = prepareComparisonCanvas(canvas, left, right)
     ctx.clearRect(0, 0, w, h)
 
     if (mode === 'overlay') {
@@ -471,12 +484,7 @@ const SliderCanvas = ({ left, right, sliderPct, mode, transform }: SliderCanvasP
     >
       <canvas
         ref={canvasRef}
-        style={{
-          maxWidth: '100%',
-          display: 'block',
-          transform: `translate(${transform.tx}px, ${transform.ty}px) scale(${transform.scale})`,
-          transformOrigin: 'top left',
-        }}
+        style={getTransformCanvasStyle(transform)}
       />
     </div>
   )
@@ -502,37 +510,37 @@ export function ImageComparePage() {
     { id: 'diff', label: t('images.diffMask') },
   ]
 
+  const resetComparisonState = useCallback(() => {
+    setDiffPct(null)
+    setComputing(false)
+    setTransform(DEFAULT_TRANSFORM)
+  }, [])
+
   const handleFile = useCallback(
     async (side: 'left' | 'right', file: File | null) => {
+      const sessionKey = side === 'left' ? 'leftImage' : 'rightImage'
+
       if (!file) {
-        if (side === 'left') {
-          setImageSession({ leftImage: null, diffPercent: null })
-        } else {
-          setImageSession({ rightImage: null, diffPercent: null })
-        }
-        setDiffPct(null)
-        setComputing(false)
-        setTransform(DEFAULT_TRANSFORM)
+        setImageSession({ [sessionKey]: null, diffPercent: null })
+        resetComparisonState()
         return
       }
 
       try {
         const info = await fileToImageInfo(file)
-        setImageSession({ [side === 'left' ? 'leftImage' : 'rightImage']: info, diffPercent: null })
+        setImageSession({ [sessionKey]: info, diffPercent: null })
         setDiffPct(null)
       } catch {
         // ignore
       }
     },
-    [setImageSession],
+    [resetComparisonState, setImageSession],
   )
 
   const handleClearSession = useCallback(() => {
     clearImageSession()
-    setDiffPct(null)
-    setComputing(false)
-    setTransform(DEFAULT_TRANSFORM)
-  }, [clearImageSession])
+    resetComparisonState()
+  }, [clearImageSession, resetComparisonState])
 
   // Compute diff when both images are loaded
   useEffect(() => {

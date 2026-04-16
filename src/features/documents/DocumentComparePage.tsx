@@ -13,7 +13,7 @@ import {
   IconUpload,
 } from '@tabler/icons-react'
 import { useSessionStore } from '../../store/sessionStore'
-import { computeDiff, type DiffSegment } from '../text/textDiff'
+import { computeDiff } from '../text/textDiff'
 import type { PdfPage, PdfDocInfo } from '../../store/sessionStore'
 import { useI18n } from '../../i18n'
 import * as pdfjsLib from 'pdfjs-dist'
@@ -22,6 +22,8 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHero } from '../../components/ui/PageHero'
 import { StatBadge } from '../../components/ui/StatBadge'
 import { SurfaceCard } from '../../components/ui/SurfaceCard'
+import { UploadPreviewActions } from '../../components/ui/UploadPreviewActions'
+import { DiffSegments } from '../text/DiffSegments'
 
 // Configure worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -52,22 +54,24 @@ const renderPageThumbnail = (
       }, reject)
   })
 
-const renderDiffSegments = (segments: DiffSegment[]) => (
-  <>
-    {segments.map((segment, index) => (
-      segment.kind === 'plain'
-        ? <span key={`plain-${index}`}>{segment.text}</span>
-        : (
-          <mark
-            key={`${segment.kind}-${index}`}
-            className={segment.kind === 'added' ? 'intraline-added' : 'intraline-removed'}
-          >
-            {segment.text}
-          </mark>
-        )
-    ))}
-  </>
-)
+const PDF_DIFF_OPTIONS = {
+  realTime: false,
+  hideUnchanged: false,
+  disableWrap: false,
+  viewMode: 'split',
+  precision: 'word',
+  language: 'plaintext',
+  ignoreLeadingTrailingWhitespace: true,
+  ignoreAllWhitespace: false,
+  ignoreCase: false,
+  ignoreBlankLines: false,
+  trimTrailingWhitespace: true,
+  normalizeUnicode: false,
+  tabSpaceMode: 'none',
+} as const
+
+const computePdfTextDiff = (leftText: string, rightText: string) =>
+  computeDiff(leftText || ' ', rightText || ' ', PDF_DIFF_OPTIONS)
 
 const loadPdfDoc = async (file: File): Promise<PdfDocInfo> => {
   const arrayBuffer = await file.arrayBuffer()
@@ -102,20 +106,25 @@ const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  const openFilePicker = () => inputRef.current?.click()
+
+  const handleSelectedFile = useCallback(async (file: File | null | undefined) => {
+    if (!file || file.type !== 'application/pdf') return
+    setLoading(true)
+    try {
+      await onFile(file)
+    } finally {
+      setLoading(false)
+    }
+  }, [onFile])
+
   const handleDrop = useCallback(
     async (e: React.DragEvent) => {
       e.preventDefault()
       setDragging(false)
-      const file = e.dataTransfer.files[0]
-      if (!file || file.type !== 'application/pdf') return
-      setLoading(true)
-      try {
-        await onFile(file)
-      } finally {
-        setLoading(false)
-      }
+      await handleSelectedFile(e.dataTransfer.files[0])
     },
-    [onFile],
+    [handleSelectedFile],
   )
 
   return (
@@ -133,14 +142,12 @@ const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
               {t('documents.pagesCount', { count: formatNumber(doc.numPages) })}
             </Text>
           </Stack>
-          <Group gap="xs" className="upload-preview-actions">
-            <Button type="button" variant="light" onClick={() => inputRef.current?.click()}>
-              {t('common.replace')}
-            </Button>
-            <Button type="button" variant="default" onClick={onClear}>
-              {t('common.clear')}
-            </Button>
-          </Group>
+          <UploadPreviewActions
+            replaceLabel={t('common.replace')}
+            clearLabel={t('common.clear')}
+            onReplace={openFilePicker}
+            onClear={onClear}
+          />
         </div>
       ) : (
         !loading && (
@@ -151,10 +158,10 @@ const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
               setDragging(false)
             }}
             onDrop={handleDrop}
-            onClick={() => inputRef.current?.click()}
+            onClick={openFilePicker}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') inputRef.current?.click() }}
+            onKeyDown={(e) => { if (e.key === 'Enter') openFilePicker() }}
             aria-label={t('documents.dropZoneAria', { label })}
           >
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
@@ -171,7 +178,7 @@ const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
               type="button"
               variant="light"
               leftSection={<IconUpload size={16} stroke={1.8} />}
-              onClick={(e) => { e.stopPropagation(); inputRef.current?.click() }}
+              onClick={(e) => { e.stopPropagation(); openFilePicker() }}
             >
               {t('documents.openPdf')}
             </Button>
@@ -184,15 +191,7 @@ const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
         hidden
         accept="application/pdf"
         onChange={async (e) => {
-          const f = e.target.files?.[0]
-          if (f) {
-            setLoading(true)
-            try {
-              await onFile(f)
-            } finally {
-              setLoading(false)
-            }
-          }
+          await handleSelectedFile(e.target.files?.[0])
           e.target.value = ''
         }}
       />
@@ -235,21 +234,7 @@ const PageList = ({ leftDoc, rightDoc, selectedPage, onSelectPage }: PageListPro
       return { pageNum: n, leftText, rightText, added: 0, removed: 0, changed: 0, identical: true }
     }
 
-    const result = computeDiff(leftText || ' ', rightText || ' ', {
-      realTime: false,
-      hideUnchanged: false,
-      disableWrap: false,
-      viewMode: 'split',
-      precision: 'word',
-      language: 'plaintext',
-      ignoreLeadingTrailingWhitespace: true,
-      ignoreAllWhitespace: false,
-      ignoreCase: false,
-      ignoreBlankLines: false,
-      trimTrailingWhitespace: true,
-      normalizeUnicode: false,
-      tabSpaceMode: 'none',
-    })
+    const result = computePdfTextDiff(leftText, rightText)
 
     const identical = result.stats.added === 0 && result.stats.removed === 0 && result.stats.changed === 0
     return {
@@ -345,6 +330,26 @@ const PagePreviewCard = ({ alt, header, page }: PreviewCardProps) => {
   )
 }
 
+type DiffTableRow = ReturnType<typeof computeDiff>['rows'][number]
+
+const DiffRowCells = ({ row }: { row: DiffTableRow }) => {
+  const showLeft = row.type !== 'added'
+  const showRight = row.type !== 'removed'
+
+  return (
+    <>
+      <td className="line-cell">{showLeft ? row.leftLine ?? '' : ''}</td>
+      <td className="code-cell">
+        {showLeft ? <DiffSegments segments={row.leftSegments} /> : null}
+      </td>
+      <td className="line-cell">{showRight ? row.rightLine ?? '' : ''}</td>
+      <td className="code-cell">
+        {showRight ? <DiffSegments segments={row.rightSegments} /> : null}
+      </td>
+    </>
+  )
+}
+
 const DiffView = ({ leftDoc, rightDoc, selectedPage }: DiffViewProps) => {
   const { t, formatNumber } = useI18n()
   const leftPage = leftDoc?.pages[selectedPage - 1]
@@ -352,21 +357,7 @@ const DiffView = ({ leftDoc, rightDoc, selectedPage }: DiffViewProps) => {
   const leftText = leftPage?.text ?? ''
   const rightText = rightPage?.text ?? ''
 
-  const result = computeDiff(leftText || ' ', rightText || ' ', {
-    realTime: false,
-    hideUnchanged: false,
-    disableWrap: false,
-    viewMode: 'split',
-    precision: 'word',
-    language: 'plaintext',
-    ignoreLeadingTrailingWhitespace: true,
-    ignoreAllWhitespace: false,
-    ignoreCase: false,
-    ignoreBlankLines: false,
-    trimTrailingWhitespace: true,
-    normalizeUnicode: false,
-    tabSpaceMode: 'none',
-  })
+  const result = computePdfTextDiff(leftText, rightText)
 
   return (
     <div className="doc-diff-panel">
@@ -405,35 +396,7 @@ const DiffView = ({ leftDoc, rightDoc, selectedPage }: DiffViewProps) => {
                       : ''
                   }`}
                 >
-                  {row.type === 'changed' ? (
-                    <>
-                      <td className="line-cell">{row.leftLine ?? ''}</td>
-                      <td className="code-cell">{renderDiffSegments(row.leftSegments)}</td>
-                      <td className="line-cell">{row.rightLine ?? ''}</td>
-                      <td className="code-cell">{renderDiffSegments(row.rightSegments)}</td>
-                    </>
-                  ) : row.type === 'removed' ? (
-                    <>
-                      <td className="line-cell">{row.leftLine ?? ''}</td>
-                      <td className="code-cell">{renderDiffSegments(row.leftSegments)}</td>
-                      <td className="line-cell" />
-                      <td className="code-cell" />
-                    </>
-                  ) : row.type === 'added' ? (
-                    <>
-                      <td className="line-cell" />
-                      <td className="code-cell" />
-                      <td className="line-cell">{row.rightLine ?? ''}</td>
-                      <td className="code-cell">{renderDiffSegments(row.rightSegments)}</td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="line-cell">{row.leftLine ?? ''}</td>
-                      <td className="code-cell">{renderDiffSegments(row.leftSegments)}</td>
-                      <td className="line-cell">{row.rightLine ?? ''}</td>
-                      <td className="code-cell">{renderDiffSegments(row.rightSegments)}</td>
-                    </>
-                  )}
+                  <DiffRowCells row={row} />
                 </tr>
               ))}
             </tbody>
