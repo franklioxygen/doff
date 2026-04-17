@@ -8,10 +8,13 @@ const formatUuidSegment = (bytes: Uint8Array, start: number, end: number) =>
 // Safari < 15.4 doesn't have crypto.randomUUID, but it does expose getRandomValues.
 const randomUUID = () => {
   const webCrypto = globalThis.crypto
-  if (typeof webCrypto?.randomUUID === 'function') {
+  if (!webCrypto) {
+    throw new Error('Secure random source is unavailable')
+  }
+  if (typeof webCrypto.randomUUID === 'function') {
     return webCrypto.randomUUID()
   }
-  if (typeof webCrypto?.getRandomValues !== 'function') {
+  if (typeof webCrypto.getRandomValues !== 'function') {
     throw new Error('Secure random source is unavailable')
   }
 
@@ -30,7 +33,7 @@ const randomUUID = () => {
 }
 
 const getPreferredTheme = (): 'light' | 'dark' => (
-  typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 )
 
 export type DiffViewMode = 'split' | 'unified'

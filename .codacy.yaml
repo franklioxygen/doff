@@ -1,0 +1,56 @@
+---
+exclude_paths:
+  - ".claude/**"
+  - ".codacy/**"
+  - ".cursor/**"
+  - ".learnings/**"
+  - ".vercel/**"
+  - ".vscode/**"
+  - "dist/**"
+  - "doc/**"
+  - "public/**"
+  - "src/assets/**"
+  - "src-tauri/icons/**"
+engines:
+  duplication:
+    exclude_paths:
+      - ".claude/**"
+      - ".codacy/**"
+      - ".cursor/**"
+      - ".github/**"
+      - ".learnings/**"
+      - ".vercel/**"
+      - ".vscode/**"
+      - "dist/**"
+      - "doc/**"
+      - "public/**"
+      - "scripts/**"
+      - "src/assets/**"
+      - "src-tauri/**"
+      - "README.md"
+      - "README.zh-CN.md"
+    config:
+      languages:
+        - "javascript"
+        - "typescript"
+  metric:
+    exclude_paths:
+      - ".claude/**"
+      - ".codacy/**"
+      - ".cursor/**"
+      - ".github/**"
+      - ".learnings/**"
+      - ".vercel/**"
+      - ".vscode/**"
+      - "dist/**"
+      - "doc/**"
+      - "public/**"
+      - "src/assets/**"
+      - "src-tauri/icons/**"
+      - "README.md"
+      - "README.zh-CN.md"
+    config:
+      languages:
+        - "javascript"
+        - "typescript"
+        - "rust"

@@ -43,9 +43,11 @@ const persistedState = (() => {
 const initialTheme = persistedState?.theme === 'dark' || persistedState?.theme === 'light'
   ? persistedState.theme
   : (
-  window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 )
-const initialLocale = resolveSupportedLocale(persistedState?.locale) ?? getPreferredLocale()
+const initialLocale = persistedState?.locale
+  ? resolveSupportedLocale(persistedState.locale)
+  : getPreferredLocale()
 
 const applyTheme = (theme: 'light' | 'dark') => {
   root.dataset.theme = theme

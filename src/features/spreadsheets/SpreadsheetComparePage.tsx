@@ -11,7 +11,7 @@ import {
   IconFileSpreadsheet,
   IconUpload,
 } from '@tabler/icons-react'
-import * as XLSX from 'xlsx'
+import readXlsxFile from 'read-excel-file/browser'
 import { useSessionStore, type SpreadsheetSession } from '../../store/sessionStore'
 import { useI18n } from '../../i18n'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -22,17 +22,20 @@ import { CompareActionButtons } from '../../components/ui/CompareActionButtons'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+type SheetEntry = {
+  key: string
+  value: unknown
+}
+
 export type SheetData = {
   name: string
-  rows: Record<string, unknown>[]
+  rows: SheetEntry[][]
   maxCol: number
 }
 
 export type LoadedFile = {
   name: string
   sheets: SheetData[]
-  rawSheets: XLSX.WorkBook['Sheets']
-  workbook: XLSX.WorkBook
 }
 
 export type CellStatus = 'same' | 'changed' | 'added-left' | 'added-right' | 'missing-left' | 'missing-right'
@@ -42,7 +45,15 @@ export type GridCell = {
   status: CellStatus
 }
 
-export type GridRow = Record<string, GridCell>
+type GridEntry = {
+  key: string
+  cell: GridCell
+}
+
+export type GridRow = {
+  id: string
+  cells: GridEntry[]
+}
 
 export type SheetDiff = {
   leftSheet: string
@@ -62,19 +73,32 @@ export type SheetDiff = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function parseSheetToRows(sheet: XLSX.WorkSheet): { rows: Record<string, unknown>[]; maxCol: number } {
-  const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { header: 1, defval: '' }) as unknown[]
-  if (!json.length) return { rows: [], maxCol: 0 }
+const EMPTY_GRID_CELL: GridCell = { value: undefined, status: 'same' }
+
+function findSheetValue(row: SheetEntry[] | undefined, key: string) {
+  return row?.find((entry) => entry.key === key)?.value
+}
+
+function hasSheetValue(row: SheetEntry[] | undefined, key: string) {
+  return row?.some((entry) => entry.key === key) ?? false
+}
+
+function findGridCell(row: GridRow, key: string) {
+  return row.cells.find((entry) => entry.key === key)?.cell ?? EMPTY_GRID_CELL
+}
+
+function parseSheetToRows(rawRows: unknown[][]): { rows: SheetEntry[][]; maxCol: number } {
+  if (!rawRows.length) return { rows: [], maxCol: 0 }
 
   // First row is header
-  const headers = json[0] as unknown[]
+  const headers = rawRows.at(0) ?? []
   const maxCol = headers.length
 
-  const rows: Record<string, unknown>[] = json.slice(1).map((rowArr) => {
-    const row = {} as Record<string, unknown>
-    ;(rowArr as unknown[]).forEach((cell, i) => {
-      const key = String(headers[i] ?? `col_${i}`)
-      row[key] = cell
+  const rows: SheetEntry[][] = rawRows.slice(1).map((rowArr) => {
+    const row: SheetEntry[] = []
+    rowArr.forEach((cell, i) => {
+      const key = String(headers.at(i) ?? `col_${i}`)
+      row.push({ key, value: cell })
     })
     return row
   })
@@ -83,7 +107,6 @@ function parseSheetToRows(sheet: XLSX.WorkSheet): { rows: Record<string, unknown
 }
 
 function compareSheets(left: SheetData, right: SheetData): SheetDiff {
-  const allKeysSet = new Set<string>()
   const leftRows = left.rows
   const rightRows = right.rows
 
@@ -95,18 +118,17 @@ function compareSheets(left: SheetData, right: SheetData): SheetDiff {
 
   // Collect all column keys across all rows for both sheets
   leftRows.forEach((row) => {
-    Object.keys(row).forEach((k) => {
-      leftKeySet.add(k)
+    row.forEach(({ key }) => {
+      leftKeySet.add(key)
     })
   })
   rightRows.forEach((row) => {
-    Object.keys(row).forEach((k) => {
-      rightKeySet.add(k)
+    row.forEach(({ key }) => {
+      rightKeySet.add(key)
     })
   })
 
   const allKeys = Array.from(new Set([...leftKeySet, ...rightKeySet])).sort()
-  allKeys.forEach((k) => allKeysSet.add(k))
 
   const grid: GridRow[] = []
   const stats = {
@@ -120,40 +142,43 @@ function compareSheets(left: SheetData, right: SheetData): SheetDiff {
   }
 
   for (let r = 0; r < maxRows; r++) {
-    const row: GridRow = {}
-    const leftRow = leftRows[r]
-    const rightRow = rightRows[r]
+    const cells: GridEntry[] = []
+    const leftRow = leftRows.at(r)
+    const rightRow = rightRows.at(r)
 
     for (const key of allKeys) {
       stats.total++
-      const leftVal = leftRow?.[key]
-      const rightVal = rightRow?.[key]
-      const leftExists = leftRow !== undefined && key in leftRow
-      const rightExists = rightRow !== undefined && key in rightRow
+      const leftExists = hasSheetValue(leftRow, key)
+      const rightExists = hasSheetValue(rightRow, key)
+      const leftVal = findSheetValue(leftRow, key)
+      const rightVal = findSheetValue(rightRow, key)
 
       if (leftExists && rightExists) {
         const lv = leftVal === undefined || leftVal === null || leftVal === '' ? undefined : String(leftVal)
         const rv = rightVal === undefined || rightVal === null || rightVal === '' ? undefined : String(rightVal)
         if (lv === rv) {
-          row[key] = { value: leftVal, status: 'same' }
+          cells.push({ key, cell: { value: leftVal, status: 'same' } })
           stats.same++
         } else {
-          row[key] = { value: rightVal, status: 'changed' }
+          cells.push({ key, cell: { value: rightVal, status: 'changed' } })
           stats.changed++
         }
       } else if (leftExists && !rightExists) {
-        row[key] = { value: leftVal, status: 'added-left' }
+        cells.push({ key, cell: { value: leftVal, status: 'added-left' } })
         stats.addedLeft++
       } else if (!leftExists && rightExists) {
-        row[key] = { value: rightVal, status: 'added-right' }
+        cells.push({ key, cell: { value: rightVal, status: 'added-right' } })
         stats.addedRight++
       } else {
         // both don't exist — shouldn't happen but guard
-        row[key] = { value: undefined, status: 'same' }
+        cells.push({ key, cell: EMPTY_GRID_CELL })
         stats.same++
       }
     }
-    grid.push(row)
+    grid.push({
+      id: `row-${r + 1}-${leftRow?.length ?? 0}-${rightRow?.length ?? 0}`,
+      cells,
+    })
   }
 
   return {
@@ -192,7 +217,7 @@ function DropZone({
   label,
   file,
   onFile,
-  accept = '.xlsx,.xls',
+  accept = '.xlsx',
 }: {
   inputId: string
   label: string
@@ -204,45 +229,44 @@ function DropZone({
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState('')
 
+  const loadFile = useCallback(async (f: File) => {
+    try {
+      const workbookSheets = await readXlsxFile(f)
+      const sheets: SheetData[] = workbookSheets.map(({ sheet, data }) => {
+        const { rows, maxCol } = parseSheetToRows(data)
+        return { name: sheet, rows, maxCol }
+      })
+      onFile({ name: f.name, sheets })
+    } catch {
+      setError(t('spreadsheets.failedParse'))
+    }
+  }, [onFile, t])
+
   const handleDrop = useCallback(
-    async (e: React.DragEvent) => {
+    (e: React.DragEvent) => {
       e.preventDefault()
       setDragging(false)
       setError('')
       const entry = e.dataTransfer.items[0]
       if (entry?.kind === 'file') {
         const f = entry.getAsFile()
-        if (f) await loadFile(f)
+        if (f) {
+          void loadFile(f)
+        }
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [loadFile],
   )
 
   const handleFileInput = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       const f = e.target.files?.[0]
-      if (f) await loadFile(f)
+      if (f) {
+        void loadFile(f)
+      }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [loadFile],
   )
-
-  const loadFile = async (f: File) => {
-    try {
-      const buf = await f.arrayBuffer()
-      const wb = XLSX.read(buf, { type: 'array', cellDates: true })
-      const sheetNames = wb.SheetNames
-      const sheets: SheetData[] = sheetNames.map((name) => {
-        const sheet = wb.Sheets[name]
-        const { rows, maxCol } = parseSheetToRows(sheet)
-        return { name, rows, maxCol }
-      })
-      onFile({ name: f.name, sheets, rawSheets: wb.Sheets, workbook: wb })
-    } catch {
-      setError(t('spreadsheets.failedParse'))
-    }
-  }
 
   return (
     <div className={`upload-drop-zone ${dragging ? 'upload-drop-zone-active' : ''} ${file ? 'upload-drop-zone-filled' : ''}`}>
@@ -367,10 +391,10 @@ function DiffTable({ diff }: { diff: SheetDiff }) {
           </thead>
           <tbody>
             {grid.map((row, ri) => (
-              <tr key={ri} className={ri % 2 === 0 ? 'even-row' : 'odd-row'}>
+              <tr key={row.id} className={ri % 2 === 0 ? 'even-row' : 'odd-row'}>
                 <td className="row-num-col">{ri + 1}</td>
                 {allKeys.map((key) => {
-                  const cell = row[key]
+                  const cell = findGridCell(row, key)
                   return (
                     <td
                       key={key}

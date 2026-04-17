@@ -37,11 +37,12 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.1",
-    "xlsx": "^0.18.5",
+    "read-excel-file": "^8.0.3",
     "zustand": "^5.0.12"
   },
   "overrides": {
-    "dompurify": "^3.3.2"
+    "dompurify": "^3.3.2",
+    "serialize-javascript": "^7.0.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

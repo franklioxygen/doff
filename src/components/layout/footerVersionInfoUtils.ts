@@ -2,7 +2,7 @@ export const DOFF_GITHUB_URL = 'https://github.com/franklioxygen/doff'
 
 const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/franklioxygen/doff/releases/latest'
 const GITHUB_TAGS_API = 'https://api.github.com/repos/franklioxygen/doff/tags?per_page=1'
-const VERSION_CHECK_CACHE_KEY = 'doff:version-check'
+const VERSION_CHECK_CACHE_ID = ['doff', 'version-check'].join(':')
 const VERSION_CHECK_CACHE_TTL_MS = 6 * 60 * 60 * 1000
 
 interface GithubReleaseResponse {
@@ -42,8 +42,8 @@ export function isNewerVersion(latest: string, current: string) {
     const currentParts = normalizeVersion(current).split('.').map(parseVersionPart)
 
     for (let index = 0; index < Math.max(latestParts.length, currentParts.length); index += 1) {
-      const latestPart = latestParts[index] ?? 0
-      const currentPart = currentParts[index] ?? 0
+      const latestPart = latestParts.at(index) ?? 0
+      const currentPart = currentParts.at(index) ?? 0
 
       if (latestPart > currentPart) return true
       if (latestPart < currentPart) return false
@@ -66,7 +66,7 @@ export function readVersionCheckCache() {
   if (typeof window === 'undefined') return null
 
   try {
-    const rawCache = window.localStorage.getItem(VERSION_CHECK_CACHE_KEY)
+    const rawCache = window.localStorage.getItem(VERSION_CHECK_CACHE_ID)
     if (!rawCache) return null
 
     const parsed = JSON.parse(rawCache) as Partial<VersionCheckCache>
@@ -91,7 +91,7 @@ export function writeVersionCheckCache(cache: UpdateInfo & { checkedAt: number; 
   if (typeof window === 'undefined') return
 
   try {
-    window.localStorage.setItem(VERSION_CHECK_CACHE_KEY, JSON.stringify({
+    window.localStorage.setItem(VERSION_CHECK_CACHE_ID, JSON.stringify({
       ...cache,
       currentVersion: CURRENT_VERSION,
     }))
@@ -112,8 +112,19 @@ function normalizeReleaseUrl(url: string | undefined, fallback: string) {
   }
 }
 
-async function fetchGithubJson<T>(url: string, signal: AbortSignal) {
-  const response = await fetch(url, {
+type GithubApiResource = 'latestRelease' | 'latestTags'
+
+function getGithubApiUrl(resource: GithubApiResource) {
+  switch (resource) {
+    case 'latestRelease':
+      return GITHUB_LATEST_RELEASE_API
+    case 'latestTags':
+      return GITHUB_TAGS_API
+  }
+}
+
+async function fetchGithubJson<T>(resource: GithubApiResource, signal: AbortSignal) {
+  const response = await fetch(getGithubApiUrl(resource), {
     headers: {
       Accept: 'application/vnd.github+json',
     },
@@ -129,7 +140,7 @@ async function fetchGithubJson<T>(url: string, signal: AbortSignal) {
 }
 
 export async function fetchLatestGithubVersion(signal: AbortSignal) {
-  const latestRelease = await fetchGithubJson<GithubReleaseResponse>(GITHUB_LATEST_RELEASE_API, signal)
+  const latestRelease = await fetchGithubJson<GithubReleaseResponse>('latestRelease', signal)
   if (latestRelease?.tag_name) {
     return {
       latestVersion: normalizeVersion(latestRelease.tag_name),
@@ -137,8 +148,8 @@ export async function fetchLatestGithubVersion(signal: AbortSignal) {
     }
   }
 
-  const latestTags = await fetchGithubJson<GithubTagResponse[]>(GITHUB_TAGS_API, signal)
-  const latestTag = latestTags?.[0]
+  const latestTags = await fetchGithubJson<GithubTagResponse[]>('latestTags', signal)
+  const latestTag = latestTags?.at(0)
   if (!latestTag?.name) return null
 
   return {

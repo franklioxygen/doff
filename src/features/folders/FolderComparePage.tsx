@@ -276,6 +276,8 @@ function FolderPickerZone({
   const handleWebkitDirInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
+    const firstFile = files.item(0)
+    if (!firstFile) return
     setLoading(true)
     setError('')
     try {
@@ -295,7 +297,7 @@ function FolderPickerZone({
         entries.set(path, { path, name: file.name, size: file.size, isText, content })
       }
       // Use the top-level folder name as label
-      const topFolder = files[0]?.webkitRelativePath?.split('/')[0] ?? label
+      const topFolder = firstFile.webkitRelativePath.split('/')[0] || label
       onFolder({ label: topFolder, entries, totalFiles: entries.size })
     } catch {
       setError(t('folders.readDirectoryFailed'))
@@ -305,13 +307,16 @@ function FolderPickerZone({
   }
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: custom folder drop zone needs drag-and-drop handlers.
     <div
       className={`upload-drop-zone ${dragging ? 'upload-drop-zone-active' : ''} ${folder ? 'upload-drop-zone-filled' : ''}`}
       onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
       onDragLeave={() => {
         setDragging(false)
       }}
-      onDrop={handleDrop}
+      onDrop={(event) => {
+        void handleDrop(event)
+      }}
     >
       {/* Hidden webkitdirectory input as fallback for browsers without showDirectoryPicker */}
       <input
@@ -319,7 +324,9 @@ function FolderPickerZone({
         // @ts-expect-error - webkitdirectory is non-standard but widely supported
         webkitdirectory=""
         directory=""
-        onChange={handleWebkitDirInput}
+        onChange={(event) => {
+          void handleWebkitDirInput(event)
+        }}
         style={{ display: 'none' }}
         id={inputId}
       />

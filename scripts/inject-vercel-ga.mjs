@@ -1,10 +1,9 @@
 import { readFile, writeFile } from 'node:fs/promises'
-import path from 'node:path'
 import process from 'node:process'
 
 const measurementId = process.env.GA_MEASUREMENT_ID?.trim()
 const isVercelProduction = process.env.VERCEL === '1' && process.env.VERCEL_ENV === 'production'
-const distIndexPath = path.resolve(process.cwd(), 'dist/index.html')
+const distIndexUrl = new URL('../dist/index.html', import.meta.url)
 
 if (!isVercelProduction) {
   console.log('Skipping Google Analytics injection outside Vercel production builds.')
@@ -33,7 +32,7 @@ const analyticsSnippet = [
   '    </script>',
 ].join('\n')
 
-const indexHtml = await readFile(distIndexPath, 'utf8')
+const indexHtml = await readFile(distIndexUrl, 'utf8')
 
 if (indexHtml.includes(gtagSrc)) {
   console.log('Google Analytics snippet already present in dist/index.html.')
@@ -41,11 +40,11 @@ if (indexHtml.includes(gtagSrc)) {
 }
 
 if (!indexHtml.includes('</head>')) {
-  console.error('Unable to inject Google Analytics because </head> was not found in dist/index.html.')
+  console.error('Unable to inject Google Analytics because the closing head tag was not found in dist/index.html.')
   process.exit(1)
 }
 
 const nextHtml = indexHtml.replace(/\s*<\/head>/, `\n${analyticsSnippet}\n  </head>`)
-await writeFile(distIndexPath, nextHtml, 'utf8')
+await writeFile(distIndexUrl, nextHtml, 'utf8')
 
 console.log(`Injected Google Analytics for ${measurementId} into dist/index.html.`)

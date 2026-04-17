@@ -5,14 +5,28 @@ type DiffSegmentsProps = {
 }
 
 export function DiffSegments({ segments }: DiffSegmentsProps) {
+  const keyedSegments = segments.reduce<{
+    offset: number
+    items: Array<{ key: string; segment: DiffSegment }>
+  }>((state, segment) => ({
+    offset: state.offset + segment.text.length,
+    items: [
+      ...state.items,
+      {
+        key: `${segment.kind}-${state.offset}-${segment.text}`,
+        segment,
+      },
+    ],
+  }), { offset: 0, items: [] }).items
+
   return (
     <>
-      {segments.map((segment, index) => (
+      {keyedSegments.map(({ key, segment }) => (
         segment.kind === 'plain'
-          ? <span key={`plain-${index}`}>{segment.text}</span>
+          ? <span key={key}>{segment.text}</span>
           : (
             <mark
-              key={`${segment.kind}-${index}`}
+              key={key}
               className={segment.kind === 'added' ? 'intraline-added' : 'intraline-removed'}
             >
               {segment.text}

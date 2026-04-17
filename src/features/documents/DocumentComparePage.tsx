@@ -151,13 +151,16 @@ const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
         </div>
       ) : (
         !loading && (
+          // biome-ignore lint/a11y/useSemanticElements: custom PDF drop zone supports drag-and-drop and click-to-open.
           <div
             className="upload-drop-zone-empty"
             onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
             onDragLeave={() => {
               setDragging(false)
             }}
-            onDrop={handleDrop}
+            onDrop={(event) => {
+              void handleDrop(event)
+            }}
             onClick={openFilePicker}
             role="button"
             tabIndex={0}
@@ -190,8 +193,8 @@ const PdfDropZone = ({ label, doc, onFile, onClear }: DropZoneProps) => {
         type="file"
         hidden
         accept="application/pdf"
-        onChange={async (e) => {
-          await handleSelectedFile(e.target.files?.[0])
+        onChange={(e) => {
+          void handleSelectedFile(e.target.files?.[0])
           e.target.value = ''
         }}
       />

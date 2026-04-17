@@ -40,7 +40,10 @@ export const computeDiff = (
   let rowIndex = 0
 
   while (i < expanded.length) {
-    const current = expanded[i]
+    const current = expanded.at(i)
+    if (!current) {
+      break
+    }
 
     if (current.type === 'unchanged') {
       rows.push({
@@ -62,15 +65,23 @@ export const computeDiff = (
 
     if (current.type === 'removed') {
       const removed: string[] = []
-      while (i < expanded.length && expanded[i].type === 'removed') {
-        removed.push(expanded[i].text)
+      while (i < expanded.length) {
+        const removedLine = expanded.at(i)
+        if (!removedLine || removedLine.type !== 'removed') {
+          break
+        }
+        removed.push(removedLine.text)
         i += 1
       }
 
       const added: string[] = []
       let j = i
-      while (j < expanded.length && expanded[j].type === 'added') {
-        added.push(expanded[j].text)
+      while (j < expanded.length) {
+        const addedLine = expanded.at(j)
+        if (!addedLine || addedLine.type !== 'added') {
+          break
+        }
+        added.push(addedLine.text)
         j += 1
       }
 
@@ -79,8 +90,8 @@ export const computeDiff = (
         const pairCount = Math.max(removed.length, added.length)
 
         for (let offset = 0; offset < pairCount; offset += 1) {
-          const leftText = removed[offset] ?? ''
-          const rightText = added[offset] ?? ''
+          const leftText = removed.at(offset) ?? ''
+          const rightText = added.at(offset) ?? ''
 
           if (leftText.length && rightText.length) {
             const intraline = buildIntralineDiff(leftText, rightText, options.precision)
@@ -127,7 +138,7 @@ export const computeDiff = (
         continue
       }
 
-      removed.forEach((line) => {
+      for (const line of removed) {
         rows.push({
           id: makeRowId(rowIndex),
           type: 'removed',
@@ -140,25 +151,23 @@ export const computeDiff = (
         stats.removed += 1
         leftLine += 1
         rowIndex += 1
-      })
+      }
       continue
     }
 
-    if (current.type === 'added') {
-      rows.push({
-        id: makeRowId(rowIndex),
-        type: 'added',
-        rightLine,
-        leftText: '',
-        rightText: current.text,
-        leftSegments: [],
-        rightSegments: buildPlainSegments(current.text),
-      })
-      stats.added += 1
-      rightLine += 1
-      rowIndex += 1
-      i += 1
-    }
+    rows.push({
+      id: makeRowId(rowIndex),
+      type: 'added',
+      rightLine,
+      leftText: '',
+      rightText: current.text,
+      leftSegments: [],
+      rightSegments: buildPlainSegments(current.text),
+    })
+    stats.added += 1
+    rightLine += 1
+    rowIndex += 1
+    i += 1
   }
 
   return {

@@ -10,13 +10,14 @@ function translateTemplate(
   key: TranslationKey,
   values?: TranslationValues,
 ): string {
-  const template = TRANSLATIONS[locale][key] ?? TRANSLATIONS.en[key]
+  const template = TRANSLATIONS[locale][key]
 
   if (!values) {
     return template
   }
 
-  return template.replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? `{${name}}`))
+  const valueEntries = new Map(Object.entries(values))
+  return template.replace(/\{(\w+)\}/g, (_, name: string) => String(valueEntries.get(name) ?? `{${name}}`))
 }
 
 export function useI18n() {
@@ -64,15 +65,12 @@ export function useI18n() {
     }
   }, [locale])
 
-  return useMemo(() => {
-    
-    return {
+  return useMemo(() => ({
       locale,
       locales: SUPPORTED_LOCALES,
       localeLabels: LOCALE_LABELS,
       t: (key: TranslationKey, values?: TranslationValues) => translateTemplate(locale, key, values),
       formatNumber: formatters.formatNumber,
       formatDateTime: formatters.formatDateTime,
-    }
-  }, [formatters, locale])
+    }), [formatters, locale])
 }

@@ -72,16 +72,16 @@ const readFileText = async (file: File): Promise<string> => {
   return text.replace(/\r\n?/g, '\n')
 }
 
-const EXT_TO_LANG: Record<string, string> = {
-  ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx', mjs: 'javascript', cjs: 'javascript',
-  json: 'json', css: 'css', scss: 'css', less: 'css',
-  html: 'html', htm: 'html', svg: 'xml', xml: 'xml',
-  md: 'markdown', mdx: 'markdown',
-  py: 'python', go: 'go', rs: 'rust', java: 'java',
-  cs: 'csharp', cpp: 'cpp', cc: 'cpp', cxx: 'cpp', c: 'cpp', h: 'cpp',
-  yaml: 'yaml', yml: 'yaml', sql: 'sql',
-  sh: 'shell', bash: 'shell', zsh: 'shell',
-}
+const EXT_TO_LANG = new Map<string, string>([
+  ['ts', 'typescript'], ['tsx', 'tsx'], ['js', 'javascript'], ['jsx', 'jsx'], ['mjs', 'javascript'], ['cjs', 'javascript'],
+  ['json', 'json'], ['css', 'css'], ['scss', 'css'], ['less', 'css'],
+  ['html', 'html'], ['htm', 'html'], ['svg', 'xml'], ['xml', 'xml'],
+  ['md', 'markdown'], ['mdx', 'markdown'],
+  ['py', 'python'], ['go', 'go'], ['rs', 'rust'], ['java', 'java'],
+  ['cs', 'csharp'], ['cpp', 'cpp'], ['cc', 'cpp'], ['cxx', 'cpp'], ['c', 'cpp'], ['h', 'cpp'],
+  ['yaml', 'yaml'], ['yml', 'yaml'], ['sql', 'sql'],
+  ['sh', 'shell'], ['bash', 'shell'], ['zsh', 'shell'],
+])
 
 const detectLanguageFromContent = (text: string): string | null => {
   const trimmed = text.trimStart()
@@ -109,9 +109,23 @@ const detectLanguageFromContent = (text: string): string | null => {
 const detectLanguage = (text: string, fileName?: string): string | null => {
   if (fileName) {
     const ext = fileName.split('.').pop()?.toLowerCase()
-    if (ext && EXT_TO_LANG[ext]) return EXT_TO_LANG[ext]
+    const language = ext ? EXT_TO_LANG.get(ext) : null
+    if (language) return language
   }
   return detectLanguageFromContent(text)
+}
+
+const getDecorationClass = (type: UnifiedLineType | 'changed') => {
+  switch (type) {
+    case 'removed':
+      return 'removed'
+    case 'added':
+      return 'added'
+    case 'changed':
+      return 'changed'
+    default:
+      return null
+  }
 }
 
 export function TextPage() {
@@ -280,7 +294,7 @@ export function TextPage() {
     side: Side,
   ) => {
     event.preventDefault()
-    const file = event.dataTransfer.files[0]
+    const file = event.dataTransfer.files.item(0)
 
     if (file) {
       await handleOpenFile(side, file)
@@ -414,7 +428,7 @@ export function TextPage() {
     let i = 0
     while (i < rows.length) {
       // Find next changed row
-      while (i < rows.length && rows[i].type === 'unchanged') i++
+      while (i < rows.length && rows.at(i)?.type === 'unchanged') i++
       if (i >= rows.length) break
 
       // Include up to 3 context lines before
@@ -422,16 +436,20 @@ export function TextPage() {
       // Find end of this change block (including gaps <= 6 unchanged lines)
       let end = i
       while (end < rows.length) {
-        if (rows[end].type !== 'unchanged') {
+        const endRow = rows.at(end)
+        if (!endRow) {
+          break
+        }
+        if (endRow.type !== 'unchanged') {
           end++
           continue
         }
         // Check if there's another change within 6 lines
         let nextChange = end
-        while (nextChange < rows.length && nextChange - end < 6 && rows[nextChange].type === 'unchanged') {
+        while (nextChange < rows.length && nextChange - end < 6 && rows.at(nextChange)?.type === 'unchanged') {
           nextChange++
         }
-        if (nextChange < rows.length && rows[nextChange].type !== 'unchanged') {
+        if (nextChange < rows.length && rows.at(nextChange)?.type !== 'unchanged') {
           end = nextChange + 1
         } else {
           break
@@ -446,7 +464,10 @@ export function TextPage() {
       let rightStart = 0
       let rightCount = 0
       for (let j = contextStart; j < contextEnd; j++) {
-        const row = rows[j]
+        const row = rows.at(j)
+        if (!row) {
+          continue
+        }
         if (j === contextStart) {
           leftStart = row.leftLine ?? (row.rightLine ?? 1)
           rightStart = row.rightLine ?? (row.leftLine ?? 1)
@@ -461,14 +482,17 @@ export function TextPage() {
 
       lines.push(`@@ -${leftStart},${leftCount} +${rightStart},${rightCount} @@`)
       for (let j = contextStart; j < contextEnd; j++) {
-        const row = rows[j]
+        const row = rows.at(j)
+        if (!row) {
+          continue
+        }
         if (row.type === 'unchanged') {
           lines.push(` ${row.leftText}`)
         } else if (row.type === 'removed') {
           lines.push(`-${row.leftText}`)
         } else if (row.type === 'added') {
           lines.push(`+${row.rightText}`)
-        } else if (row.type === 'changed') {
+        } else {
           lines.push(`-${row.leftText}`)
           lines.push(`+${row.rightText}`)
         }
@@ -543,7 +567,7 @@ export function TextPage() {
 
   // Apply diff decorations to editor gutters and line backgrounds
   useEffect(() => {
-    if (!monaco) return
+    if (!monaco || !editorsReady) return
     const leftEditor = leftEditorRef.current
     const rightEditor = rightEditorRef.current
     const leftDecorations: monaco.editor.IModelDeltaDecoration[] = []
@@ -553,8 +577,10 @@ export function TextPage() {
       // In aligned mode, line numbers map 1:1 to aligned.types
       aligned.types.forEach((type, i) => {
         const line = i + 1
-        const classMap = { removed: 'removed', added: 'added', changed: 'changed' } as const
-        const cls = classMap[type]
+        const cls = getDecorationClass(type)
+        if (!cls) {
+          return
+        }
         if (type !== 'added') {
           leftDecorations.push({
             range: new monaco.Range(line, 1, line, 1),
@@ -610,7 +636,7 @@ export function TextPage() {
   }, [diffResult, aligned, editorsReady, onlyShowDiffs, monaco])
 
   useEffect(() => {
-    if (!monaco) return
+    if (!monaco || !singleEditorReady) return
     const singleEditor = singleEditorRef.current
     if (!singleEditor) return
 
